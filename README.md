@@ -1,33 +1,33 @@
 # 🎵 django-music-vault
 
-App Django reutilizable para catalogar tu colección de música: librerías, álbumes, tags ilimitados, favoritos y autocompletado de metadata vía Spotify. Incluye el frontend **VinylVault** (HTML/CSS/JS vanilla, tema oscuro) listo para usar — y también corre standalone: clona el repo, migra y ya tienes tu vault.
+Reusable Django app for cataloging your music collection: libraries, albums, unlimited tags, favorites, and Spotify metadata autofill. Ships with the **VinylVault** frontend (vanilla HTML/CSS/JS, dark theme) ready to use — and also runs standalone: clone the repo, migrate, and your vault is up.
 
-## Características
+## Features
 
-- **Librerías** con nombre, descripción y color; **álbumes** con título, artista, año, género, país, sello, portada, Spotify URI y tags ilimitados.
-- **Favoritos**, búsqueda en vivo, filtros combinables (género/país/década/tags) y ordenamiento — todo en el frontend incluido.
-- **Export / Import JSON** de toda la colección.
-- **API REST JSON** (sin dependencias extra, solo Django) con auth por sesión; cada usuario ve únicamente sus datos.
-- **Spotify search/autofill** con client credentials (búsqueda de álbumes y detalle normalizado).
-- Sin base de datos hardcodeada: usa la conexión `default` del proyecto host, o la que definas con `DATABASE_ROUTERS`.
+- **Libraries** with name, description and color; **albums** with title, artist, year, genre, country, label, cover, Spotify URI and unlimited tags.
+- **Favorites**, live search, combinable filters (genre/country/decade/tags) and sorting — all in the bundled frontend.
+- **Export / Import JSON** of your whole collection.
+- **JSON REST API** (no extra dependencies, just Django) with session auth; each user only sees their own data.
+- **Spotify search/autofill** using client credentials (album search and normalized detail).
+- No hardcoded database: uses the host project's `default` connection, or whatever you define with `DATABASE_ROUTERS`.
 
-## Uso standalone (este repo)
+## Standalone usage (this repo)
 
 ```bash
-git clone https://github.com/drakkaroy/django-music-vault.git
+git clone git@github.com:drakkaroy/django-music-vault.git
 cd django-music-vault
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 
-cp .env.example .env       # edita credenciales (o bórralo para usar SQLite)
+cp .env.example .env       # edit credentials (or delete it to use SQLite)
 python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
 ```
 
-Abre <http://localhost:8000/> e inicia sesión. Sin `.env` corre con SQLite; con `DB_ENGINE=postgresql` usa Postgres (variables `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`).
+Open <http://localhost:8000/> and sign in. Without a `.env` it runs on SQLite; with `DB_ENGINE=postgresql` it uses Postgres (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` variables).
 
-## Uso como paquete en otro proyecto
+## Usage as a package in another project
 
 ```bash
 pip install git+https://github.com/drakkaroy/django-music-vault.git
@@ -40,7 +40,7 @@ INSTALLED_APPS = [
     "music_vault",
 ]
 
-SPOTIFY_CLIENT_ID = "..."      # opcional, para search/autofill
+SPOTIFY_CLIENT_ID = "..."      # optional, for search/autofill
 SPOTIFY_CLIENT_SECRET = "..."
 
 # urls.py
@@ -52,11 +52,11 @@ urlpatterns = [
 ]
 ```
 
-La vista principal requiere usuario autenticado (`LOGIN_URL` estándar de Django). Los modelos usan la base `default` del proyecto host.
+The main view requires an authenticated user (standard Django `LOGIN_URL`). Models use the host project's `default` database.
 
-### Base de datos separada (opcional, en el proyecto consumidor)
+### Separate database (optional, in the consumer project)
 
-El paquete no fija ninguna conexión. Si quieres aislar sus tablas en otra base, decláralo en el proyecto host:
+The package pins no connection. To isolate its tables in another database, declare it in the host project:
 
 ```python
 # settings.py
@@ -84,29 +84,29 @@ class MusicVaultRouter:
 
 ## API
 
-Todos los endpoints van bajo el prefijo donde montes `music_vault.urls` (`/` en el proyecto standalone), requieren sesión iniciada y usan CSRF por cookie + header `X-CSRFToken`.
+All endpoints live under the prefix where you mount `music_vault.urls` (`/` in the standalone project), require an active session, and use CSRF via cookie + `X-CSRFToken` header.
 
-| Método | Ruta | Descripción |
+| Method | Path | Description |
 |---|---|---|
-| GET | `api/state/` | Colección completa del usuario (`{"libraries": [...]}`) |
-| POST | `api/libraries/` | Crear librería `{name, description, color}` |
-| PUT / DELETE | `api/libraries/<id>/` | Editar / borrar librería |
-| POST | `api/libraries/<id>/albums/` | Agregar álbum |
-| PUT / DELETE | `api/albums/<id>/` | Editar / borrar álbum |
-| POST | `api/albums/<id>/favorite/` | Alternar favorito |
-| POST | `api/import/` | Restaurar backup JSON (reemplaza toda la colección) |
-| GET | `api/spotify/search/?q=&limit=` | Buscar álbumes en Spotify |
-| GET | `api/spotify/albums/<spotify_id>/` | Detalle normalizado de un álbum de Spotify |
+| GET | `api/state/` | The user's full collection (`{"libraries": [...]}`) |
+| POST | `api/libraries/` | Create library `{name, description, color}` |
+| PUT / DELETE | `api/libraries/<id>/` | Edit / delete library |
+| POST | `api/libraries/<id>/albums/` | Add album |
+| PUT / DELETE | `api/albums/<id>/` | Edit / delete album |
+| POST | `api/albums/<id>/favorite/` | Toggle favorite |
+| POST | `api/import/` | Restore a JSON backup (replaces the whole collection) |
+| GET | `api/spotify/search/?q=&limit=` | Search albums on Spotify |
+| GET | `api/spotify/albums/<spotify_id>/` | Normalized detail of a Spotify album |
 
-Formato de álbum (espejo del frontend): `{id, title, artist, year, genre, country, label, cover, spotifyUri, tags[], favorite, addedAt}` — ids como string, fechas en epoch ms.
+Album format (mirrors the frontend): `{id, title, artist, year, genre, country, label, cover, spotifyUri, tags[], favorite, addedAt}` — ids as strings, dates as epoch ms.
 
-## Variables de entorno
+## Environment variables
 
-| Variable | Uso |
+| Variable | Purpose |
 |---|---|
-| `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS` | Config estándar del proyecto standalone |
-| `DB_ENGINE` (`sqlite3`/`postgresql`) + `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | Base de datos del proyecto standalone |
-| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Credenciales client-credentials para search/autofill ([dashboard](https://developer.spotify.com/dashboard)) |
+| `DJANGO_SECRET_KEY`, `DJANGO_DEBUG`, `DJANGO_ALLOWED_HOSTS` | Standard config for the standalone project |
+| `DB_ENGINE` (`sqlite3`/`postgresql`) + `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` | Standalone project database |
+| `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET` | Client-credentials keys for search/autofill ([dashboard](https://developer.spotify.com/dashboard)) |
 
 ## Tests
 
@@ -116,10 +116,10 @@ python manage.py test music_vault
 
 ## Roadmap
 
-- [ ] Reproducción real vía Spotify Connect (OAuth por usuario)
-- [ ] Autocompletar el formulario de álbum desde la búsqueda de Spotify en la UI
-- [ ] Rating con estrellas y estadísticas de la colección
+- [ ] Real playback via Spotify Connect (per-user OAuth)
+- [ ] Autofill the album form from Spotify search in the UI
+- [ ] Star ratings and collection statistics
 
-## Licencia
+## License
 
 MIT
