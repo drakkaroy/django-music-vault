@@ -1,0 +1,16 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+.env
+db.sqlite3
+staticfiles/
+
+.venv/
+venv/
+
+.vscode/
+.idea/
+*.Zone.Identifier

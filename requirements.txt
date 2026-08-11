@@ -1,0 +1,3 @@
+# Runnable standalone project (package + Postgres driver)
+-e .
+psycopg[binary]>=3.1
