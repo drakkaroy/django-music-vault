@@ -20,6 +20,9 @@ const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></
 const { window } = dom
 window.MV_BASE = '/'
 window.MV_LOGOUT_URL = '/accounts/logout/'
+// jsdom doesn't implement these (used by the Export button's Blob download).
+window.URL.createObjectURL = () => 'blob:mock-url'
+window.URL.revokeObjectURL = () => {}
 Object.defineProperty(window.document, 'cookie', { value: 'csrftoken=fake-csrf-token', writable: true })
 
 const fakeState = {
@@ -144,6 +147,33 @@ window.fetch = async (url, options = {}) => {
     }
     library.albums.push(created)
     return json(created, 201)
+  }
+  if (path.endsWith('/api/import/') && method === 'POST') {
+    const body = JSON.parse(options.body)
+    fakeState.libraries = body.libraries.map((lib, i) => ({
+      id: `imported-${i}`,
+      name: lib.name,
+      description: lib.description || '',
+      color: lib.color || '#e0654a',
+      createdAt: Date.now(),
+      albums: (lib.albums || []).map((a, j) => ({
+        id: `imported-album-${i}-${j}`,
+        title: a.title,
+        artist: a.artist,
+        year: a.year,
+        genre: a.genre,
+        country: a.country,
+        label: a.label || '',
+        cover: a.cover || '',
+        coverFile: '',
+        spotifyUri: a.spotifyUri || '',
+        tags: a.tags || [],
+        tracks: a.tracks || [],
+        favorite: Boolean(a.favorite),
+        addedAt: Date.now(),
+      })),
+    }))
+    return json(fakeState)
   }
   throw new Error(`Unmocked fetch in smoke test: ${method} ${path}`)
 }
@@ -351,6 +381,38 @@ checks.push(
     lastAlbumCreatePayload?.tracks?.length === 2 && lastAlbumCreatePayload.tracks[0].title === 'One More Time',
   ],
   ['spotify import: spotifyUri prefilled from the search result', lastAlbumCreatePayload?.spotifyUri === 'spotify:album:abc123'],
+)
+
+// Export: just confirm clicking it doesn't throw (jsdom lacks
+// URL.createObjectURL, stubbed above) and shows the expected toast.
+clickButtonContaining('Export')
+await new Promise((r) => setTimeout(r, 30))
+checks.push(['export: shows the "Backup downloaded" toast', window.document.getElementById('root').innerHTML.includes('Backup downloaded')])
+
+// Import: simulate picking a file (jsdom has no DataTransfer, so the file
+// input's `files` property is overridden directly for this one node).
+const backupData = {
+  libraries: [
+    {
+      name: 'Restored Library',
+      description: 'From backup',
+      color: '#4ad4c9',
+      albums: [
+        { title: 'Imported Album', artist: 'Some Artist', year: 2020, genre: 'Pop', country: 'US', tags: [], tracks: [] },
+      ],
+    },
+  ],
+}
+const importFile = new window.File([JSON.stringify(backupData)], 'backup.json', { type: 'application/json' })
+const fileInput = window.document.querySelector('input[type="file"]')
+if (!fileInput) throw new Error('Import file input not found')
+Object.defineProperty(fileInput, 'files', { value: [importFile], configurable: true })
+fileInput.dispatchEvent(new window.Event('change', { bubbles: true }))
+await new Promise((r) => setTimeout(r, 100))
+const afterImportHtml = window.document.getElementById('root').innerHTML
+checks.push(
+  ['import: navigates home after restoring', afterImportHtml.includes('Your Libraries')],
+  ['import: restored library appears', afterImportHtml.includes('Restored Library')],
 )
 
 let failed = false

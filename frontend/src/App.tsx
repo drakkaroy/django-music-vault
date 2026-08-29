@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { deleteLibrary, playAlbum, SPOTIFY_CONNECT_URL, toggleFavorite } from './api/client'
+import { deleteLibrary, importBackup, playAlbum, SPOTIFY_CONNECT_URL, toggleFavorite } from './api/client'
 import { AlbumDetailModal } from './components/AlbumDetailModal'
 import { AlbumFormModal } from './components/AlbumFormModal'
 import { FavoritesView } from './components/FavoritesView'
@@ -89,6 +89,29 @@ export default function App() {
     }
   }
 
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `vinylvault-backup-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(a.href)
+    pushToast('Backup downloaded', '⭳')
+  }
+
+  const handleImportFile = async (file: File) => {
+    try {
+      const data = JSON.parse(await file.text())
+      if (!Array.isArray(data.libraries)) throw new Error('Invalid backup file')
+      await importBackup(data)
+      await refreshState()
+      navigate('home')
+      pushToast('Backup restored ✓')
+    } catch (err) {
+      pushToast(err instanceof Error ? err.message : 'Invalid backup file', '⚠')
+    }
+  }
+
   if (loading) {
     return (
       <div className="view">
@@ -114,6 +137,8 @@ export default function App() {
         onSpotifyClick={() =>
           spotifyConnected ? disconnectSpotify() : (location.href = SPOTIFY_CONNECT_URL)
         }
+        onExport={handleExport}
+        onImportFile={handleImportFile}
       />
       <main className="main">
         <button className="menu-btn" aria-label="Toggle menu" onClick={() => setSidebarOpen((v) => !v)}>

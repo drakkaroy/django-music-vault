@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { getCookie, LOGOUT_URL } from '../api/client'
 import type { View } from '../App'
 import type { Library } from '../types/api'
@@ -13,6 +14,8 @@ interface SidebarProps {
   onNewLibrary: () => void
   spotifyConnected: boolean
   onSpotifyClick: () => void
+  onExport: () => void
+  onImportFile: (file: File) => void
 }
 
 export function Sidebar({
@@ -25,7 +28,10 @@ export function Sidebar({
   onNewLibrary,
   spotifyConnected,
   onSpotifyClick,
+  onExport,
+  onImportFile,
 }: SidebarProps) {
+  const importInputRef = useRef<HTMLInputElement>(null)
   return (
     <nav className={`sidebar ${open ? 'open' : ''}`} aria-label="Main navigation">
       <div className="brand">
@@ -69,7 +75,23 @@ export function Sidebar({
         >
           {spotifyConnected ? '🎧 Disconnect Spotify' : '🎧 Connect Spotify'}
         </FootButton>
-        {/* Export/Import: ported in a follow-up pass */}
+        <FootButton onClick={onExport} title="Download all your data as a JSON backup">
+          ⭳ Export
+        </FootButton>
+        <FootButton onClick={() => importInputRef.current?.click()} title="Restore from a JSON backup">
+          ⭱ Import
+        </FootButton>
+        <input
+          ref={importInputRef}
+          type="file"
+          accept=".json"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) onImportFile(file)
+            e.target.value = ''
+          }}
+        />
         <form method="post" action={LOGOUT_URL} style={{ display: 'contents' }}>
           <input type="hidden" name="csrfmiddlewaretoken" value={getCookie('csrftoken')} />
           <FootButton type="submit" title="Sign out">
