@@ -12,8 +12,9 @@ Reusable Django app (`music_vault`) that catalogs a music collection and serves 
 
 - **Keep the package decoupled**: `music_vault` must not import from `project/`, hardcode a database connection, or assume anything beyond `INSTALLED_APPS` + `include("music_vault.urls")` in a host project. Database isolation is the consumer's job (`DATABASE_ROUTERS`, documented in README).
 - **Dependencies**: package depends on Django + requests only. No DRF, no spotipy — the API uses plain `JsonResponse` views (`ApiView` base class in `views.py`) and the Spotify client is hand-rolled in `music_vault/spotify/`.
-- **API JSON shape mirrors the original localStorage frontend**: camelCase keys (`spotifyUri`, `addedAt`, `cover`), ids serialized as strings, datetimes as epoch milliseconds. Don't change this contract without updating `static/music_vault/script.js` — the JS compares ids with `===` against DOM dataset strings.
-- **Frontend**: `vinylvault.html` and `styles.css` come from the original VinylVault app and should stay visually untouched; `script.js` is the adapted version whose only intended divergence is the API persistence layer (top of file) replacing localStorage.
+- **API JSON shape mirrors the original localStorage frontend**: camelCase keys (`spotifyUri`, `addedAt`, `cover`), ids serialized as strings, datetimes as epoch milliseconds. Don't change this contract without updating `static/music_vault/script.js` — the JS compares ids with `===` against DOM dataset strings. Extra keys: `coverFile` (media URL of the locally stored cover, preferred by the frontend over `cover`).
+- **Cover downloads**: album create/update accepts `downloadCover: true`; the server fetches the cover into `Album.cover_file` via `covers.py`. Only `https://i.scdn.co` is allowed as source (SSRF guard) and the download is best-effort — `cover_url` always keeps the remote URL as fallback. Host projects need `MEDIA_ROOT`/`MEDIA_URL`.
+- **Frontend**: `styles.css` comes from the original VinylVault app and stays untouched — new UI (the Spotify search/preview modal) is styled in `spotify.css` instead. `script.js` diverges from the original in two places: the API persistence layer (top of file) and the Spotify add-album flow (`openSpotifySearch` + prefill in `openAlbumForm`).
 - Documentation and code comments are in English.
 
 ## Commands
