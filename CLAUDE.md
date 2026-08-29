@@ -2,19 +2,25 @@
 
 Reusable Django app (`music_vault`) that catalogs a music collection and serves the bundled VinylVault frontend, plus a minimal host project (`project/` + `manage.py`) so the repo runs standalone.
 
+## Documentation
+
+Deep-reference docs live in `docs/` (start at [docs/index.md](docs/index.md)) — architecture, backend, frontend, configuration (env vars, Spotify Dashboard setup), deployment. This file stays short and states hard constraints; when a bullet below needs more explanation, it links to the relevant doc instead of repeating it. Keep both in sync: update the linked doc when behavior changes, not just this file.
+
 ## Layout
 
-- `music_vault/` — the installable package (published via `pyproject.toml`). Everything reusable lives here: models, JSON API views, urls, the adapted frontend (`templates/music_vault/`, `static/music_vault/`), and the `spotify/` client module.
+- `music_vault/` — the installable package (published via `pyproject.toml`). Everything reusable lives here: models, JSON API views, urls, the adapted frontend (`templates/music_vault/`, `static/music_vault/`), a default login template (`templates/registration/login.html` — see below), and the `spotify/` client module.
 - `project/` — thin host project for standalone use only. Env-driven settings (loads `.env` at repo root); no business logic belongs here.
-- `templates/registration/login.html` — login page for the standalone project (project-level concern, not part of the package).
 
 ## Conventions and constraints
 
-- **Keep the package decoupled**: `music_vault` must not import from `project/`, hardcode a database connection, or assume anything beyond `INSTALLED_APPS` + `include("music_vault.urls")` in a host project. Database isolation is the consumer's job (`DATABASE_ROUTERS`, documented in README).
-- **Dependencies**: package depends on Django + requests only. No DRF, no spotipy — the API uses plain `JsonResponse` views (`ApiView` base class in `views.py`) and the Spotify client is hand-rolled in `music_vault/spotify/`.
-- **API JSON shape mirrors the original localStorage frontend**: camelCase keys (`spotifyUri`, `addedAt`, `cover`), ids serialized as strings, datetimes as epoch milliseconds. Don't change this contract without updating `static/music_vault/script.js` — the JS compares ids with `===` against DOM dataset strings. Extra keys: `coverFile` (media URL of the locally stored cover, preferred by the frontend over `cover`).
-- **Cover downloads**: album create/update accepts `downloadCover: true`; the server fetches the cover into `Album.cover_file` via `covers.py`. Only `https://i.scdn.co` is allowed as source (SSRF guard) and the download is best-effort — `cover_url` always keeps the remote URL as fallback. Host projects need `MEDIA_ROOT`/`MEDIA_URL`.
-- **Frontend**: `styles.css` comes from the original VinylVault app and stays untouched — new UI (the Spotify search/preview modal) is styled in `spotify.css` instead. `script.js` diverges from the original in two places: the API persistence layer (top of file) and the Spotify add-album flow (`openSpotifySearch` + prefill in `openAlbumForm`).
+- **Keep the package decoupled**: `music_vault` must not import from `project/`, hardcode a database connection, or assume anything beyond `INSTALLED_APPS` + `include("music_vault.urls")` in a host project. Database isolation is the consumer's job (`DATABASE_ROUTERS`) — see [docs/architecture.md](docs/architecture.md) and [docs/configuration.md](docs/configuration.md#separate-database-optional). Full integration checklist: [docs/integration.md](docs/integration.md).
+- **Default login template**: `music_vault/templates/registration/login.html` (VinylVault-themed, plain Django auth form fields, no hardcoded URLs) ships with the package via `APP_DIRS`, so a host project gets a working login for free — but never gets forced into it: Django's template loader checks a host project's own `TEMPLATES.DIRS` before app dirs, so any project supplying its own `registration/login.html` overrides ours automatically, no settings flag needed. The package still ships **no login URLs/view** — a host project must wire `path("accounts/", include("django.contrib.auth.urls"))` (or equivalent) itself, so it isn't forced onto routes it might already use.
+- **Dependencies**: package depends on Django + requests only. No DRF, no spotipy — the API uses plain `JsonResponse` views (`ApiView` base class in `views.py`) and the Spotify client is hand-rolled in `music_vault/spotify/`. Details: [docs/backend.md](docs/backend.md).
+- **API JSON shape mirrors the original localStorage frontend**: camelCase keys, ids as strings, datetimes as epoch milliseconds. Don't change this contract without updating `static/music_vault/script.js` — the JS compares ids with `===` against DOM dataset strings. Full contract: [docs/backend.md#json-contract](docs/backend.md#json-contract).
+- **Cover downloads**: only `https://i.scdn.co` is allowed as a source (SSRF guard), best-effort, host projects need `MEDIA_ROOT`/`MEDIA_URL`. Details: [docs/backend.md#cover-downloads-coversPy](docs/backend.md#cover-downloads-coverspy).
+- **Frontend**: `styles.css` comes from the original VinylVault app and stays untouched — new UI goes in a new file (e.g. `spotify.css`), never edit it. `script.js` divergence points from the original are documented in [docs/frontend.md](docs/frontend.md) — read that before adding another one, and add yours to the list there.
+- **Two separate Spotify auth flows** — don't conflate them: client-credentials (`spotify/auth.py`/`client.py`/`service.py`, search/autofill, no user login) vs. per-user Authorization Code (`spotify/oauth.py`/`player.py`, playback). `SpotifyAccount` tokens are stored **in plaintext** — a deliberate, documented choice for this self-hosted app, not an oversight; see [docs/backend.md#spotify-integrations](docs/backend.md#spotify-integrations) before changing it.
+- **Spotify Dashboard redirect URI** is the most common setup failure for playback (exact-match on scheme/host/port/path) — the gotchas are documented in [docs/configuration.md#spotify-dashboard-setup](docs/configuration.md#spotify-dashboard-setup); point there instead of re-debugging from scratch.
 - Documentation and code comments are in English.
 
 ## Commands
@@ -26,6 +32,8 @@ DB_ENGINE=sqlite3 python manage.py runserver   # run without Postgres
 ```
 
 The local `.env` (gitignored) points at the Collector App's Postgres (`django-postgres` docker container, port 5432) and holds real Spotify credentials — never commit or print it.
+
+The user's actual dev server (port 8000) sometimes runs from an external venv (`/home/rmonroy/drakk-server/venv`, not this repo's own `.venv`), pointed at the same real Postgres. New migrations need `migrate` run against *that* connection too, not just the local `.venv`'s SQLite test DB — see [docs/setup.md#troubleshooting](docs/setup.md#troubleshooting) (this exact gap caused two live 500s this session: `cover_file` then `SpotifyAccount`).
 
 ## Related projects (read-only)
 

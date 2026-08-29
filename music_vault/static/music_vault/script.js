@@ -7,7 +7,9 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 /* ---------- API layer ---------- */
-const API_BASE = (window.MV_BASE || '/') + 'api/';
+const VAULT_BASE = window.MV_BASE || '/';
+const API_BASE = VAULT_BASE + 'api/';
+const SPOTIFY_CONNECT_URL = VAULT_BASE + 'spotify/connect/';
 const getCookie = name => document.cookie.split('; ').find(r => r.startsWith(name + '='))?.split('=')[1];
 async function api(path, method = 'GET', body = null){
   const res = await fetch(API_BASE + path, {
@@ -51,6 +53,7 @@ const coverOf = a => (a.coverFile && a.coverFile.trim()) ? a.coverFile
 
 /* ---------- State ---------- */
 let state = { libraries: [] };
+let spotifyConnected = false;
 
 let route = { view: 'home', libId: null };
 // per-library UI state (filters), not persisted
@@ -299,7 +302,7 @@ function bindAlbumCards(scope){
     card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
   });
   scope.querySelectorAll('[data-play]').forEach(b => b.addEventListener('click', e => {
-    e.stopPropagation(); playAlbum();
+    e.stopPropagation(); playAlbum(b.dataset.play);
   }));
   scope.querySelectorAll('[data-fav]').forEach(b => b.addEventListener('click', e => {
     e.stopPropagation();
@@ -308,8 +311,40 @@ function bindAlbumCards(scope){
   }));
 }
 
-function playAlbum(){
-  toast('Spotify playback coming soon — this button will play on your device 🎵', '▶');
+async function playAlbum(albumId){
+  if (!spotifyConnected){
+    toast('Connect your Spotify account first — see the sidebar 🎧', '⚠');
+    return;
+  }
+  try {
+    await api(`albums/${albumId}/play/`, 'POST');
+    toast('Now playing on Spotify ▶');
+  } catch (err){ toast(err.message, '⚠'); }
+}
+
+/* ---------- Spotify Connect (account link + playback) ---------- */
+function updateSpotifyButton(){
+  const btn = $('#spotifyBtn');
+  btn.textContent = spotifyConnected ? '🎧 Disconnect Spotify' : '🎧 Connect Spotify';
+  btn.title = spotifyConnected ? 'Disconnect your Spotify account' : 'Connect your Spotify account to enable playback';
+}
+async function disconnectSpotify(){
+  try {
+    await api('spotify/disconnect/', 'POST');
+    spotifyConnected = false;
+    updateSpotifyButton();
+    toast('Spotify disconnected');
+  } catch (err){ toast(err.message, '⚠'); }
+}
+function handleSpotifyRedirect(){
+  const params = new URLSearchParams(location.search);
+  const status = params.get('spotify');
+  if (!status) return;
+  if (status === 'connected'){ spotifyConnected = true; toast('Spotify connected ✓', '🎧'); }
+  else if (status === 'denied'){ toast('Spotify connection cancelled', '⚠'); }
+  else if (status === 'not_configured'){ toast('Spotify is not configured on this server', '⚠'); }
+  else { toast('Could not connect to Spotify — try again', '⚠'); }
+  history.replaceState({}, '', location.pathname);
 }
 async function toggleFav(libId, albumId){
   const a = findLib(libId)?.albums.find(x => x.id === albumId);
@@ -368,7 +403,7 @@ function openAlbumDetail(libId, albumId){
       </div>
     </div>`, true);
   bd.querySelector('[data-x]').onclick = closeModal;
-  bd.querySelector('[data-d="play"]').onclick = playAlbum;
+  bd.querySelector('[data-d="play"]').onclick = () => playAlbum(albumId);
   bd.querySelector('[data-d="fav"]').onclick = () => { toggleFav(libId, albumId); closeModal(); };
   bd.querySelector('[data-d="edit"]').onclick = () => openAlbumForm(libId, a);
   bd.querySelector('[data-d="del"]').onclick = async () => {
@@ -501,7 +536,7 @@ function openAlbumForm(libId, album = null, spotify = null){
           ? 'This cover comes from Spotify — it will be downloaded and stored in your vault.'
           : "Leave empty and I'll generate a nice vinyl-style cover automatically."}</p></div>
       <div class="field"><label for="f-uri">Spotify URI / link</label>
-        <input id="f-uri" value="${esc(a.spotifyUri || '')}" placeholder="spotify:album:… (used later for the Play button)"></div>
+        <input id="f-uri" value="${esc(a.spotifyUri || '')}" placeholder="spotify:album:… or an open.spotify.com link — used by the ▶ Play button"></div>
       <div class="modal-actions">
         <button type="button" class="btn btn-ghost" data-x>Cancel</button>
         <button type="submit" class="btn btn-accent">${album ? 'Save changes' : 'Add album'}</button>
@@ -629,10 +664,15 @@ $('#importFile').addEventListener('change', e => {
 
 $('#newLibBtn').onclick = () => openLibForm();
 $('#menuBtn').onclick = () => $('#sidebar').classList.toggle('open');
+$('#spotifyBtn').onclick = () => { spotifyConnected ? disconnectSpotify() : location.href = SPOTIFY_CONNECT_URL; };
 
 /* ---------- Boot ---------- */
 (async () => {
-  try { await refreshState(); }
-  catch (err){ toast(err.message, '⚠'); }
+  try {
+    await refreshState();
+    spotifyConnected = (await api('spotify/status/')).connected;
+  } catch (err){ toast(err.message, '⚠'); }
+  handleSpotifyRedirect();
+  updateSpotifyButton();
   render();
 })();
