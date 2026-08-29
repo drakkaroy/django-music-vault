@@ -57,6 +57,8 @@ function json(data, status = 200) {
 }
 
 let nextLibraryId = 2
+let nextAlbumId = 100
+let lastAlbumCreatePayload = null
 window.fetch = async (url, options = {}) => {
   const path = String(url)
   const method = options.method || 'GET'
@@ -73,6 +75,35 @@ window.fetch = async (url, options = {}) => {
       albums: [],
     }
     fakeState.libraries.push(created)
+    return json(created, 201)
+  }
+  const albumsMatch = path.match(/\/api\/libraries\/(\w+)\/albums\/$/)
+  if (albumsMatch && method === 'POST') {
+    const body = JSON.parse(options.body)
+    lastAlbumCreatePayload = body
+    const library = fakeState.libraries.find((l) => l.id === albumsMatch[1])
+    const created = {
+      id: String(nextAlbumId++),
+      title: body.title,
+      artist: body.artist,
+      year: body.year,
+      genre: body.genre,
+      country: body.country,
+      label: body.label || '',
+      cover: body.cover || '',
+      coverFile: '',
+      spotifyUri: body.spotifyUri || '',
+      tags: body.tags || [],
+      tracks: (body.tracks || []).map((t) => ({
+        trackNumber: t.trackNumber,
+        title: t.title,
+        durationMs: t.durationMs,
+        spotifyUri: t.spotifyUri || '',
+      })),
+      favorite: false,
+      addedAt: Date.now(),
+    }
+    library.albums.push(created)
     return json(created, 201)
   }
   throw new Error(`Unmocked fetch in smoke test: ${method} ${path}`)
@@ -166,6 +197,40 @@ checks.push(
   ['library form: modal closes after creating', !window.document.querySelector('.modal-backdrop')],
   ['library form: navigates into the new library', afterCreateHtml.includes('0 of 0 albums')],
   ['library form: new library appears in the sidebar', afterCreateHtml.includes('Jazz Nights')],
+)
+
+// Add an album to the (now current) "Jazz Nights" library through the real
+// form: required fields, one tag, one track — then check both the DOM and
+// the actual POST payload (tags/tracks aren't shown on the card, so the DOM
+// alone can't confirm they made it through correctly).
+clickButtonContaining('Add album')
+await new Promise((r) => setTimeout(r, 50))
+setInputValue(window.document.querySelector('#f-title'), 'Discovery')
+setInputValue(window.document.querySelector('#f-artist'), 'Daft Punk')
+setInputValue(window.document.querySelector('#f-genre'), 'Electronic')
+setInputValue(window.document.querySelector('#f-country'), 'France')
+
+const tagInput = window.document.querySelector('[aria-label="Add tag"]')
+setInputValue(tagInput, 'dance')
+tagInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+await new Promise((r) => setTimeout(r, 20))
+
+clickButtonContaining('+ Add track')
+await new Promise((r) => setTimeout(r, 20))
+setInputValue(window.document.querySelector('.tr-title'), 'One More Time')
+
+const addAlbumSubmit = [...window.document.querySelectorAll('button')].find((b) => b.textContent === 'Add album')
+if (!addAlbumSubmit) throw new Error('Could not find the "Add album" submit button')
+addAlbumSubmit.click()
+await new Promise((r) => setTimeout(r, 100))
+const afterAlbumHtml = window.document.getElementById('root').innerHTML
+
+checks.push(
+  ['album form: modal closes after adding', !window.document.querySelector('.modal-backdrop')],
+  ['album form: new album card renders in the library', afterAlbumHtml.includes('Discovery') && afterAlbumHtml.includes('Daft Punk')],
+  ['album form: result count updates', afterAlbumHtml.includes('1 of 1 albums')],
+  ['album form: tag was included in the actual POST payload', lastAlbumCreatePayload?.tags?.includes('dance')],
+  ['album form: track was included in the actual POST payload', lastAlbumCreatePayload?.tracks?.[0]?.title === 'One More Time'],
 )
 
 let failed = false

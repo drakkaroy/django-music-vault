@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { deleteLibrary, playAlbum, SPOTIFY_CONNECT_URL, toggleFavorite } from './api/client'
+import { AlbumFormModal } from './components/AlbumFormModal'
 import { FavoritesView } from './components/FavoritesView'
 import { HomeView } from './components/HomeView'
 import { LibraryFormModal } from './components/LibraryFormModal'
@@ -16,10 +17,13 @@ interface Route {
   libId: string | null
 }
 
-// More variants (album-form, spotify-search, album-detail, tracklist) land
-// here as each modal gets ported — one state machine instead of a bag of
-// booleans, same idea as the vanilla app's single #modalRoot.
-type ModalState = { type: 'library-form'; library?: Library } | null
+// More variants (spotify-search, album-detail, tracklist) land here as each
+// modal gets ported — one state machine instead of a bag of booleans, same
+// idea as the vanilla app's single #modalRoot.
+type ModalState =
+  | { type: 'library-form'; library?: Library }
+  | { type: 'album-form'; libraryId: string; album?: Album }
+  | null
 
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong'
@@ -129,7 +133,7 @@ export default function App() {
             <LibraryView
               library={activeLibrary}
               onBack={() => navigate('home')}
-              onAddAlbum={comingSoon}
+              onAddAlbum={() => setModal({ type: 'album-form', libraryId: activeLibrary.id })}
               onEditLibrary={() => setModal({ type: 'library-form', library: activeLibrary })}
               onDeleteLibrary={() => handleDeleteLibrary(activeLibrary)}
               onOpenAlbum={comingSoon}
@@ -144,6 +148,14 @@ export default function App() {
           library={modal.library}
           onClose={() => setModal(null)}
           onCreated={(created) => navigate('library', created.id)}
+        />
+      )}
+      {modal?.type === 'album-form' && (
+        <AlbumFormModal
+          libraryId={modal.libraryId}
+          libraryName={state.libraries.find((l) => l.id === modal.libraryId)?.name ?? ''}
+          album={modal.album}
+          onClose={() => setModal(null)}
         />
       )}
       <ToastStack />
