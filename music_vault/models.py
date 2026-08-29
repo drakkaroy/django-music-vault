@@ -44,6 +44,11 @@ class Album(models.Model):
     cover_file = models.FileField(upload_to="music_vault/covers/", blank=True)
     spotify_uri = models.CharField(max_length=255, blank=True)
     tags = models.JSONField(default=list, blank=True)
+    # Flat list of {track_number, title, duration_ms, spotify_uri} dicts —
+    # same "mirror the frontend, don't design a Track model" choice as tags.
+    # Imported wholesale from Spotify or edited as rows in the album form;
+    # nothing else in the app ever needs to query a single track by id.
+    tracks = models.JSONField(default=list, blank=True)
     favorite = models.BooleanField(default=False, db_index=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

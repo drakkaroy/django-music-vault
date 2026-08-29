@@ -287,6 +287,9 @@ class AlbumPlayView(ApiView):
         context_uri = normalize_context_uri(album.spotify_uri)
         if not context_uri:
             return JsonResponse({"error": "This album has no Spotify link"}, status=400)
+        track_uri = self.payload.get("trackUri") or ""
+        if track_uri and not track_uri.startswith("spotify:track:"):
+            track_uri = ""
         try:
             account = SpotifyAccount.objects.get(user=request.user)
         except SpotifyAccount.DoesNotExist:
@@ -294,7 +297,7 @@ class AlbumPlayView(ApiView):
                 {"error": "Connect your Spotify account first", "code": "not_connected"}, status=409
             )
         try:
-            PlayerClient(account).play(context_uri)
+            PlayerClient(account).play(context_uri, offset_uri=track_uri or None)
         except NoActiveDevice:
             return JsonResponse(
                 {"error": "Open Spotify on a device and try again", "code": "no_device"}, status=409

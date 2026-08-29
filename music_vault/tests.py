@@ -129,6 +129,46 @@ class AlbumTests(ApiTestCase):
         self.assertEqual(data["tags"], ["90s", "grunge"])
         self.assertFalse(data["favorite"])
 
+    def test_create_album_with_tracks(self):
+        payload = {
+            "title": "Discovery", "artist": "Daft Punk", "year": 2001,
+            "genre": "Electronic", "country": "France",
+            "tracks": [
+                {"trackNumber": 2, "title": "Aerodynamic", "durationMs": 212000, "spotifyUri": "spotify:track:abc"},
+                {"trackNumber": 1, "title": "One More Time", "durationMs": 320000},
+            ],
+        }
+        response = self.post_json(
+            reverse("music_vault:api-library-albums", args=[self.library.pk]), payload
+        )
+        self.assertEqual(response.status_code, 201)
+        tracks = response.json()["tracks"]
+        self.assertEqual(len(tracks), 2)
+        # sorted by track number regardless of input order
+        self.assertEqual(tracks[0]["title"], "One More Time")
+        self.assertEqual(tracks[0]["spotifyUri"], "")
+        self.assertEqual(tracks[1]["spotifyUri"], "spotify:track:abc")
+
+    def test_create_album_rejects_track_without_title(self):
+        payload = {
+            "title": "Bad", "artist": "X", "year": 2000, "genre": "G", "country": "C",
+            "tracks": [{"trackNumber": 1, "durationMs": 1000}],
+        }
+        response = self.post_json(
+            reverse("music_vault:api-library-albums", args=[self.library.pk]), payload
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_create_album_rejects_invalid_track_duration(self):
+        payload = {
+            "title": "Bad", "artist": "X", "year": 2000, "genre": "G", "country": "C",
+            "tracks": [{"trackNumber": 1, "title": "Track", "durationMs": "not-a-number"}],
+        }
+        response = self.post_json(
+            reverse("music_vault:api-library-albums", args=[self.library.pk]), payload
+        )
+        self.assertEqual(response.status_code, 400)
+
     def test_create_album_validates_required_fields(self):
         response = self.post_json(
             reverse("music_vault:api-library-albums", args=[self.library.pk]),
@@ -441,6 +481,32 @@ class AlbumPlayTests(ApiTestCase):
         response = self.client.post(reverse("music_vault:api-album-play", args=[album.pk]))
         self.assertEqual(response.status_code, 404)
 
+    @mock.patch("music_vault.views.PlayerClient")
+    def test_play_track_passes_offset(self, player_client_cls):
+        SpotifyAccount.objects.create(user=self.user, access_token="a", refresh_token="r", expires_at=0)
+        player_client_cls.return_value.play.return_value = None
+        response = self.post_json(
+            reverse("music_vault:api-album-play", args=[self.album.pk]),
+            {"trackUri": "spotify:track:xyz"},
+        )
+        self.assertEqual(response.status_code, 200)
+        player_client_cls.return_value.play.assert_called_once_with(
+            "spotify:album:abc123", offset_uri="spotify:track:xyz"
+        )
+
+    @mock.patch("music_vault.views.PlayerClient")
+    def test_play_ignores_malformed_track_uri(self, player_client_cls):
+        SpotifyAccount.objects.create(user=self.user, access_token="a", refresh_token="r", expires_at=0)
+        player_client_cls.return_value.play.return_value = None
+        response = self.post_json(
+            reverse("music_vault:api-album-play", args=[self.album.pk]),
+            {"trackUri": "not-a-spotify-uri"},
+        )
+        self.assertEqual(response.status_code, 200)
+        player_client_cls.return_value.play.assert_called_once_with(
+            "spotify:album:abc123", offset_uri=None
+        )
+
 
 class SpotifyTests(ApiTestCase):
     def test_search_requires_query(self):
@@ -453,3 +519,26 @@ class SpotifyTests(ApiTestCase):
                 reverse("music_vault:api-spotify-search"), {"q": "daft punk"}
             )
         self.assertEqual(response.status_code, 503)
+
+    def test_normalize_album_extracts_tracks(self):
+        from music_vault.spotify.service import _normalize_album
+
+        raw = {
+            "id": "abc", "uri": "spotify:album:abc", "name": "Discovery",
+            "artists": [{"name": "Daft Punk"}], "images": [],
+            "tracks": {"items": [
+                {"track_number": 1, "name": "One More Time", "duration_ms": 320000, "uri": "spotify:track:1"},
+                {"track_number": 2, "name": "Aerodynamic", "duration_ms": 212000, "uri": "spotify:track:2"},
+            ]},
+        }
+        normalized = _normalize_album(raw)
+        self.assertEqual(len(normalized["tracks"]), 2)
+        self.assertEqual(normalized["tracks"][0], {
+            "track_number": 1, "title": "One More Time", "duration_ms": 320000, "spotify_uri": "spotify:track:1",
+        })
+
+    def test_normalize_album_search_result_has_no_tracks(self):
+        from music_vault.spotify.service import _normalize_album
+
+        normalized = _normalize_album({"id": "abc", "name": "Discovery", "artists": [], "images": []})
+        self.assertEqual(normalized["tracks"], [])

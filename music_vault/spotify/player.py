@@ -49,12 +49,12 @@ class PlayerClient:
         response.raise_for_status()
         return response.json().get("devices", [])
 
-    def play(self, context_uri: str) -> None:
+    def play(self, context_uri: str, offset_uri: str | None = None) -> None:
+        body = {"context_uri": context_uri}
+        if offset_uri:
+            body["offset"] = {"uri": offset_uri}
         response = requests.put(
-            f"{API_BASE}/me/player/play",
-            headers=self._headers(),
-            json={"context_uri": context_uri},
-            timeout=10,
+            f"{API_BASE}/me/player/play", headers=self._headers(), json=body, timeout=10
         )
         if response.status_code == 404:
             devices = self.list_devices()
@@ -64,7 +64,7 @@ class PlayerClient:
                 f"{API_BASE}/me/player/play",
                 params={"device_id": devices[0]["id"]},
                 headers=self._headers(),
-                json={"context_uri": context_uri},
+                json=body,
                 timeout=10,
             )
         response.raise_for_status()
