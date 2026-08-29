@@ -64,6 +64,45 @@ window.fetch = async (url, options = {}) => {
   const method = options.method || 'GET'
   if (path.includes('/api/state/')) return json(fakeState)
   if (path.includes('/api/spotify/status/')) return json({ connected: false })
+  if (path.includes('/api/spotify/search/')) {
+    return json({
+      results: [
+        {
+          spotify_id: 'abc123',
+          spotify_uri: 'spotify:album:abc123',
+          name: 'Discovery',
+          artists: ['Daft Punk'],
+          release_date: '2001-03-12',
+          total_tracks: 2,
+          cover_url: null,
+          external_url: 'https://open.spotify.com/album/abc123',
+          album_type: 'album',
+          label: '',
+          genres: [],
+          tracks: [],
+        },
+      ],
+    })
+  }
+  if (path.includes('/api/spotify/albums/abc123/')) {
+    return json({
+      spotify_id: 'abc123',
+      spotify_uri: 'spotify:album:abc123',
+      name: 'Discovery',
+      artists: ['Daft Punk'],
+      release_date: '2001-03-12',
+      total_tracks: 2,
+      cover_url: null,
+      external_url: 'https://open.spotify.com/album/abc123',
+      album_type: 'album',
+      label: 'Daft Life',
+      genres: ['Electronic'],
+      tracks: [
+        { track_number: 1, title: 'One More Time', duration_ms: 320000, spotify_uri: 'spotify:track:1' },
+        { track_number: 2, title: 'Aerodynamic', duration_ms: 212000, spotify_uri: 'spotify:track:2' },
+      ],
+    })
+  }
   if (path.endsWith('/api/libraries/') && method === 'POST') {
     const body = JSON.parse(options.body)
     const created = {
@@ -229,8 +268,11 @@ checks.push(
 // Add an album to the (now current) "Jazz Nights" library through the real
 // form: required fields, one tag, one track — then check both the DOM and
 // the actual POST payload (tags/tracks aren't shown on the card, so the DOM
-// alone can't confirm they made it through correctly).
+// alone can't confirm they made it through correctly). "Add album" now opens
+// the Spotify search modal first — use its manual-entry escape hatch.
 clickButtonContaining('Add album')
+await new Promise((r) => setTimeout(r, 50))
+clickButtonContaining('Enter album manually instead')
 await new Promise((r) => setTimeout(r, 50))
 setInputValue(window.document.querySelector('#f-title'), 'Discovery')
 setInputValue(window.document.querySelector('#f-artist'), 'Daft Punk')
@@ -258,6 +300,57 @@ checks.push(
   ['album form: result count updates', afterAlbumHtml.includes('1 of 1 albums')],
   ['album form: tag was included in the actual POST payload', lastAlbumCreatePayload?.tags?.includes('dance')],
   ['album form: track was included in the actual POST payload', lastAlbumCreatePayload?.tracks?.[0]?.title === 'One More Time'],
+)
+
+// Import an album from Spotify search into "Rock" (not "Jazz Nights", which
+// already has a manually-created "Discovery" from the previous scenario —
+// using the same library would make these checks pass even if the import
+// path were broken, since the manual one is already there).
+clickButtonContaining('Rock')
+await new Promise((r) => setTimeout(r, 50))
+clickButtonContaining('Add album')
+await new Promise((r) => setTimeout(r, 50))
+const spotifySearchInput = window.document.querySelector('[aria-label="Search Spotify"]')
+if (!spotifySearchInput) throw new Error('Spotify search modal did not open (no [aria-label="Search Spotify"] input found)')
+setInputValue(spotifySearchInput, 'discovery')
+const searchSubmitBtn = [...window.document.querySelectorAll('button')].find((b) => b.textContent === 'Search')
+if (!searchSubmitBtn) throw new Error('Could not find the Spotify search submit button')
+searchSubmitBtn.click()
+await new Promise((r) => setTimeout(r, 50))
+const spCard = window.document.querySelector('.sp-card')
+if (!spCard) throw new Error('No Spotify search result card rendered')
+spCard.click()
+await new Promise((r) => setTimeout(r, 50))
+const previewHtml = window.document.getElementById('root').innerHTML
+checks.push([
+  'spotify search: preview shows album details from the detail endpoint',
+  previewHtml.includes('Discovery') && previewHtml.includes('Daft Punk') && previewHtml.includes('Daft Life'),
+])
+
+const saveBtn = [...window.document.querySelectorAll('button')].find((b) => b.textContent?.includes('Save to library'))
+if (!saveBtn) throw new Error('Could not find the "Save to library" button')
+saveBtn.click()
+await new Promise((r) => setTimeout(r, 50))
+checks.push(
+  ['spotify import: album form prefills title', window.document.querySelector('#f-title')?.value === 'Discovery'],
+  ['spotify import: album form prefills artist', window.document.querySelector('#f-artist')?.value === 'Daft Punk'],
+  ['spotify import: album form prefills genre', window.document.querySelector('#f-genre')?.value === 'Electronic'],
+)
+
+// Country isn't part of Spotify's data, so the (required) field is still
+// blank after prefill — fill it in like a real user would before saving.
+setInputValue(window.document.querySelector('#f-country'), 'France')
+const addAlbumSubmit2 = [...window.document.querySelectorAll('button')].find((b) => b.textContent === 'Add album')
+if (!addAlbumSubmit2) throw new Error('Could not find the "Add album" submit button (import flow)')
+addAlbumSubmit2.click()
+await new Promise((r) => setTimeout(r, 100))
+checks.push(
+  ['spotify import: downloadCover flag set on the actual POST payload', lastAlbumCreatePayload?.downloadCover === true],
+  [
+    'spotify import: tracks imported from the Spotify detail response',
+    lastAlbumCreatePayload?.tracks?.length === 2 && lastAlbumCreatePayload.tracks[0].title === 'One More Time',
+  ],
+  ['spotify import: spotifyUri prefilled from the search result', lastAlbumCreatePayload?.spotifyUri === 'spotify:album:abc123'],
 )
 
 let failed = false

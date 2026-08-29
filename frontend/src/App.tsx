@@ -7,10 +7,11 @@ import { HomeView } from './components/HomeView'
 import { LibraryFormModal } from './components/LibraryFormModal'
 import { LibraryView } from './components/LibraryView'
 import { Sidebar } from './components/Sidebar'
+import { SpotifySearchModal } from './components/SpotifySearchModal'
 import { ToastStack } from './components/ToastStack'
 import { TracklistModal } from './components/TracklistModal'
 import { useVault } from './context/VaultContext'
-import type { Album, Library } from './types/api'
+import type { Album, Library, SpotifySearchResult } from './types/api'
 
 export type View = 'home' | 'favorites' | 'library'
 
@@ -19,12 +20,12 @@ interface Route {
   libId: string | null
 }
 
-// More variants (spotify-search) land here as that modal gets ported — one
-// state machine instead of a bag of booleans, same idea as the vanilla
-// app's single #modalRoot.
+// One state machine instead of a bag of booleans — same idea as the
+// vanilla app's single #modalRoot.
 type ModalState =
   | { type: 'library-form'; library?: Library }
-  | { type: 'album-form'; libraryId: string; album?: Album }
+  | { type: 'spotify-search'; libraryId: string }
+  | { type: 'album-form'; libraryId: string; album?: Album; spotify?: SpotifySearchResult }
   | { type: 'album-detail'; library: Library; album: Album }
   | { type: 'tracklist'; album: Album }
   | null
@@ -141,7 +142,7 @@ export default function App() {
             <LibraryView
               library={activeLibrary}
               onBack={() => navigate('home')}
-              onAddAlbum={() => setModal({ type: 'album-form', libraryId: activeLibrary.id })}
+              onAddAlbum={() => setModal({ type: 'spotify-search', libraryId: activeLibrary.id })}
               onEditLibrary={() => setModal({ type: 'library-form', library: activeLibrary })}
               onDeleteLibrary={() => handleDeleteLibrary(activeLibrary)}
               onOpenAlbum={(album) => openAlbumDetail(album, activeLibrary)}
@@ -158,11 +159,22 @@ export default function App() {
           onCreated={(created) => navigate('library', created.id)}
         />
       )}
+      {modal?.type === 'spotify-search' && (
+        <SpotifySearchModal
+          libraryName={state.libraries.find((l) => l.id === modal.libraryId)?.name ?? ''}
+          onClose={() => setModal(null)}
+          onManualEntry={() => setModal({ type: 'album-form', libraryId: modal.libraryId })}
+          onUseResult={(result) =>
+            setModal({ type: 'album-form', libraryId: modal.libraryId, spotify: result })
+          }
+        />
+      )}
       {modal?.type === 'album-form' && (
         <AlbumFormModal
           libraryId={modal.libraryId}
           libraryName={state.libraries.find((l) => l.id === modal.libraryId)?.name ?? ''}
           album={modal.album}
+          spotify={modal.spotify}
           onClose={() => setModal(null)}
         />
       )}
