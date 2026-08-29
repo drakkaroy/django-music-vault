@@ -35,22 +35,22 @@ urlpatterns = [
 
 **The mount prefix matters for Spotify playback**, not just search: the OAuth redirect URI is built as `request.build_absolute_uri(reverse("music_vault:spotify-callback"))`, so mounting at `"music/"` makes the callback `https://yourhost/music/spotify/callback/`, not `.../spotify/callback/`. Register whatever the actual mounted path is in the Spotify Dashboard — see [configuration.md#spotify-dashboard-setup](configuration.md#spotify-dashboard-setup).
 
-## 4. Auth — bring your own login
+## 4. Auth — wire up login, styling comes for free
 
-`music_vault` requires an authenticated session (`@login_required` on the main view, 401 JSON on the API for anonymous users) but **ships no login view or template** — only the package's own `templates/music_vault/` is installed; the standalone project's `templates/registration/login.html` and `accounts/` URL wiring are `project/`-only and are *not* part of the pip-installed package (see `pyproject.toml`'s `package-data`, which lists only `music_vault/templates/**`).
-
-Your host project needs its own working login, e.g. the simplest option:
+`music_vault` requires an authenticated session (`@login_required` on the main view, 401 JSON on the API for anonymous users). The package **ships a default login template** (`music_vault/templates/registration/login.html`, VinylVault-themed dark UI, plain Django auth form fields) via `APP_DIRS`, but **not the login URL/view itself** — that's left to you, so it doesn't claim routes your project might already use for `accounts/`.
 
 ```python
 # urls.py
 urlpatterns = [..., path("accounts/", include("django.contrib.auth.urls"))]
 ```
 
-plus a `templates/registration/login.html` of your own (Django's auth views expect that template name by default). If your project already has any login flow, this step is likely already done — just confirm `LOGIN_URL` (defaults to `"/accounts/login/"`) resolves to it, and optionally set:
+That's it — `django.contrib.auth.urls`'s `LoginView` looks for `registration/login.html`, and our package's copy is found automatically via `APP_DIRS` (Django checks `TEMPLATES.DIRS` first, then each app's `templates/`, in `INSTALLED_APPS` order). Optionally set:
 
 ```python
 LOGIN_REDIRECT_URL = "music_vault:vault"   # land here right after login
 ```
+
+**Already have a login flow, or want your own look?** Nothing to do — Django's template loader checks your project's own `TEMPLATES.DIRS` *before* any app's `templates/`, so a `registration/login.html` of your own is picked up automatically and ours is never seen. No setting to flip, no override mechanism to learn — just supply the template and it wins.
 
 ## 5. Migrate
 
@@ -86,7 +86,7 @@ See [configuration.md#separate-database-optional](configuration.md#separate-data
 - [ ] `pip install`
 - [ ] `INSTALLED_APPS` includes `music_vault` and `django.contrib.staticfiles`
 - [ ] `include("music_vault.urls")` somewhere in `urls.py`
-- [ ] a working login (`LOGIN_URL` resolves, `registration/login.html` exists) — **not provided by the package**
+- [ ] `path("accounts/", include("django.contrib.auth.urls"))` (or equivalent) — the default login template ships with the package, but not the URL wiring
 - [ ] `python manage.py migrate`
 - [ ] (optional) `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` for search
 - [ ] (optional) Spotify Dashboard Redirect URI matching your mount prefix, for playback

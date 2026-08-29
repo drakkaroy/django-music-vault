@@ -5,7 +5,6 @@
 ```
 music_vault/     the installable, reusable package (pyproject.toml)
 project/         thin host project — only exists so this repo runs standalone
-templates/registration/login.html   standalone project's login page (not part of the package)
 manage.py
 ```
 

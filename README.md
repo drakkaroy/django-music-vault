@@ -46,7 +46,7 @@ SPOTIFY_CLIENT_SECRET = "..."
 urlpatterns = [..., path("music/", include("music_vault.urls"))]
 ```
 
-The main view requires an authenticated user — **the package ships no login page**, only the standalone `project/` in this repo has one, so bring your own. Full checklist (auth, migrations, optional Spotify/media/database-isolation steps): **[docs/integration.md](docs/integration.md)**.
+The main view requires an authenticated user — the package ships a default VinylVault-themed login template (override it automatically by supplying your own `registration/login.html`), but not the login URL itself. Full checklist (auth wiring, migrations, optional Spotify/media/database-isolation steps): **[docs/integration.md](docs/integration.md)**.
 
 ## API
 
