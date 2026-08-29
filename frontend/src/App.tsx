@@ -1,9 +1,12 @@
 import { useState } from 'react'
-import { SPOTIFY_CONNECT_URL } from './api/client'
+import { deleteLibrary, playAlbum, SPOTIFY_CONNECT_URL, toggleFavorite } from './api/client'
+import { FavoritesView } from './components/FavoritesView'
 import { HomeView } from './components/HomeView'
+import { LibraryView } from './components/LibraryView'
 import { Sidebar } from './components/Sidebar'
 import { ToastStack } from './components/ToastStack'
 import { useVault } from './context/VaultContext'
+import type { Album, Library } from './types/api'
 
 export type View = 'home' | 'favorites' | 'library'
 
@@ -12,8 +15,12 @@ interface Route {
   libId: string | null
 }
 
+function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : 'Something went wrong'
+}
+
 export default function App() {
-  const { state, loading, spotifyConnected, disconnectSpotify, pushToast } = useVault()
+  const { state, loading, spotifyConnected, refreshState, disconnectSpotify, pushToast } = useVault()
   const [route, setRoute] = useState<Route>({ view: 'home', libId: null })
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
@@ -23,6 +30,47 @@ export default function App() {
   }
 
   const comingSoon = () => pushToast('Not ported yet — coming in the next pass 🚧', '🚧')
+
+  const handlePlayAlbum = async (album: Album) => {
+    if (!spotifyConnected) {
+      pushToast('Connect your Spotify account first — see the sidebar 🎧', '⚠')
+      return
+    }
+    try {
+      await playAlbum(album.id)
+      pushToast('Now playing on Spotify ▶')
+    } catch (err) {
+      pushToast(errorMessage(err), '⚠')
+    }
+  }
+
+  const handleToggleFavorite = async (album: Album) => {
+    try {
+      const updated = await toggleFavorite(album.id)
+      await refreshState()
+      pushToast(
+        updated.favorite ? `Added "${album.title}" to favorites` : `Removed "${album.title}" from favorites`,
+        updated.favorite ? '♥' : '♡',
+      )
+    } catch (err) {
+      pushToast(errorMessage(err), '⚠')
+    }
+  }
+
+  const handleDeleteLibrary = async (library: Library) => {
+    const ok = confirm(
+      `Delete library "${library.name}" and its ${library.albums.length} albums? This cannot be undone.\n(Tip: Export a backup first from the sidebar.)`,
+    )
+    if (!ok) return
+    try {
+      await deleteLibrary(library.id)
+      await refreshState()
+      navigate('home')
+      pushToast('Library deleted', '🗑')
+    } catch (err) {
+      pushToast(errorMessage(err), '⚠')
+    }
+  }
 
   if (loading) {
     return (
@@ -63,41 +111,24 @@ export default function App() {
             />
           )}
           {route.view === 'favorites' && (
-            <div className="view">
-              <div className="page-head">
-                <div>
-                  <h1>♥ Favorites</h1>
-                  <p className="page-sub">{favCount} favorite albums across all libraries</p>
-                </div>
-              </div>
-              <p className="sp-hint">Favorites grid — coming in the next pass 🚧</p>
-            </div>
+            <FavoritesView
+              libraries={state.libraries}
+              onOpenAlbum={comingSoon}
+              onPlayAlbum={handlePlayAlbum}
+              onToggleFavorite={handleToggleFavorite}
+            />
           )}
           {route.view === 'library' && activeLibrary && (
-            <div className="view">
-              <button className="back-link" onClick={() => navigate('home')}>
-                ← All libraries
-              </button>
-              <div className="page-head">
-                <div>
-                  <h1>
-                    <span
-                      className="lib-dot"
-                      style={{
-                        background: activeLibrary.color,
-                        display: 'inline-block',
-                        width: 14,
-                        height: 14,
-                        marginRight: 6,
-                      }}
-                    />
-                    {activeLibrary.name}
-                  </h1>
-                  <p className="page-sub">{activeLibrary.description}</p>
-                </div>
-              </div>
-              <p className="sp-hint">Album grid, filters, and modals — coming in the next pass 🚧</p>
-            </div>
+            <LibraryView
+              library={activeLibrary}
+              onBack={() => navigate('home')}
+              onAddAlbum={comingSoon}
+              onEditLibrary={comingSoon}
+              onDeleteLibrary={() => handleDeleteLibrary(activeLibrary)}
+              onOpenAlbum={comingSoon}
+              onPlayAlbum={handlePlayAlbum}
+              onToggleFavorite={handleToggleFavorite}
+            />
           )}
         </div>
       </main>

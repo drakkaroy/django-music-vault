@@ -97,13 +97,40 @@ const checks = [
   ['shows the Spotify connect button', html.includes('Connect Spotify')],
 ]
 
+function clickButtonContaining(text) {
+  const button = [...window.document.querySelectorAll('button')].find((b) => b.textContent?.includes(text))
+  if (!button) throw new Error(`No <button> found containing "${text}"`)
+  button.click()
+}
+
+// Navigate into the "Rock" library (real click, not just initial render) and
+// check the toolbar + album card actually mounted.
+clickButtonContaining('Rock')
+await new Promise((r) => setTimeout(r, 50))
+const libraryHtml = window.document.getElementById('root').innerHTML
+checks.push(
+  ['library view: shows the library description (unique to this page)', libraryHtml.includes('Guitars')],
+  ['library view: shows the toolbar search box', libraryHtml.includes('Search album, artist, tag')],
+  ['library view: renders the album card', libraryHtml.includes('OK Computer') && libraryHtml.includes('Radiohead')],
+  ['library view: shows the result count', libraryHtml.includes('1 of 1 albums')],
+)
+
+// Navigate to Favorites and check the (favorited, in the fake state) album shows up there too.
+clickButtonContaining('Favorites')
+await new Promise((r) => setTimeout(r, 50))
+const favoritesHtml = window.document.getElementById('root').innerHTML
+checks.push(
+  ['favorites view: shows the favorites heading', favoritesHtml.includes('♥ Favorites')],
+  ['favorites view: renders the favorited album with its library name', favoritesHtml.includes('OK Computer') && favoritesHtml.includes('Rock')],
+)
+
 let failed = false
 for (const [label, ok] of checks) {
   console.log(`${ok ? '✓' : '✗'} ${label}`)
   if (!ok) failed = true
 }
 if (failed) {
-  console.log('\n--- #root HTML (first 800 chars) ---')
-  console.log(html.slice(0, 800))
+  console.log('\n--- #root HTML (first 1200 chars) ---')
+  console.log(window.document.getElementById('root').innerHTML.slice(0, 1200))
   process.exit(1)
 }
