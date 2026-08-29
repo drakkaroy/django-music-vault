@@ -62,3 +62,22 @@ def _delete_cover_file(sender, instance, **kwargs):
     """Remove the downloaded cover from storage when an album is deleted."""
     if instance.cover_file:
         instance.cover_file.delete(save=False)
+
+
+class SpotifyAccount(models.Model):
+    """A user's linked Spotify account (Authorization Code OAuth), used only
+    to control playback on their own devices via Spotify Connect."""
+
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="spotify_account",
+    )
+    access_token = models.CharField(max_length=500)
+    refresh_token = models.CharField(max_length=500)
+    expires_at = models.FloatField()
+    scope = models.CharField(max_length=255, blank=True)
+    connected_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.user} — Spotify"

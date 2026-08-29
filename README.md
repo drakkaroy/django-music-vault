@@ -9,6 +9,7 @@ Reusable Django app for cataloging your music collection: libraries, albums, unl
 - **Export / Import JSON** of your whole collection.
 - **JSON REST API** (no extra dependencies, just Django) with session auth; each user only sees their own data.
 - **Spotify search/autofill**: the "Add album" flow searches Spotify (by artist or album), shows a quick preview, prefills the form and downloads the cover art to local storage (client-credentials, no user OAuth needed).
+- **Spotify Connect playback**: each user can link their own Spotify account (OAuth); the ▶ Play button then starts the album on whichever of their devices already has Spotify open.
 - No hardcoded database: uses the host project's `default` connection, or whatever you define with `DATABASE_ROUTERS`.
 
 ## Standalone usage (this repo)
@@ -26,6 +27,8 @@ python manage.py runserver
 ```
 
 Open <http://localhost:8000/> and sign in. Without a `.env` it runs on SQLite; with `DB_ENGINE=postgresql` it uses Postgres (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` variables).
+
+To enable playback (the ▶ Play button), add `http://localhost:8000/spotify/callback/` as a Redirect URI in your [Spotify Dashboard](https://developer.spotify.com/dashboard) app, then click "Connect Spotify" in the sidebar. Playback needs Spotify Premium and an already-open Spotify app on some device.
 
 ## Usage as a package in another project
 
@@ -97,6 +100,11 @@ All endpoints live under the prefix where you mount `music_vault.urls` (`/` in t
 | POST | `api/import/` | Restore a JSON backup (replaces the whole collection) |
 | GET | `api/spotify/search/?q=&limit=` | Search albums on Spotify |
 | GET | `api/spotify/albums/<spotify_id>/` | Normalized detail of a Spotify album |
+| GET | `api/spotify/status/` | Whether the user has linked their Spotify account |
+| POST | `api/spotify/disconnect/` | Unlink the user's Spotify account |
+| POST | `api/albums/<id>/play/` | Start the album on the user's active Spotify device |
+| GET | `spotify/connect/` | Browser redirect into Spotify's OAuth consent screen (not JSON) |
+| GET | `spotify/callback/` | OAuth redirect target; stores the account and redirects back to the vault (not JSON) |
 
 Album format (mirrors the frontend): `{id, title, artist, year, genre, country, label, cover, coverFile, spotifyUri, tags[], favorite, addedAt}` — ids as strings, dates as epoch ms. `cover` is the remote URL; `coverFile` is the media URL of the locally stored copy (empty if none) and the frontend prefers it.
 
@@ -119,7 +127,7 @@ python manage.py test music_vault
 ## Roadmap
 
 - [x] Autofill the album form from Spotify search in the UI (with local cover download)
-- [ ] Real playback via Spotify Connect (per-user OAuth)
+- [x] Real playback via Spotify Connect (per-user OAuth)
 - [ ] Star ratings and collection statistics
 
 ## License

@@ -1,23 +1,27 @@
 import json
+import time
 
 import requests
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import redirect, render
+from django.urls import reverse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie
 
 from .covers import fetch_cover
-from .models import Album, Library
+from .models import Album, Library, SpotifyAccount
 from .serializers import (
     album_to_dict,
     clean_album_payload,
     clean_library_payload,
     library_to_dict,
 )
+from .spotify import oauth
+from .spotify.player import NoActiveDevice, PlayerClient, normalize_context_uri
 from .spotify.service import get_service
 
 
@@ -212,3 +216,89 @@ class SpotifyAlbumView(ApiView):
         except requests.RequestException:
             return JsonResponse({"error": "Spotify API request failed"}, status=502)
         return JsonResponse(album)
+
+
+# ---------------------------------------------------------------------------
+# Spotify Connect: per-user OAuth so the Play button can start playback on
+# whichever of the user's own devices already has Spotify open.
+# ---------------------------------------------------------------------------
+
+@login_required
+def spotify_connect(request):
+    """Kick off the Authorization Code flow — a real browser redirect, not
+    a fetch, since the user must land on Spotify's own consent screen."""
+    state = oauth.new_state()
+    request.session["spotify_oauth_state"] = state
+    redirect_uri = request.build_absolute_uri(reverse("music_vault:spotify-callback"))
+    try:
+        return redirect(oauth.authorize_url(redirect_uri, state))
+    except ImproperlyConfigured:
+        return redirect(f"{reverse('music_vault:vault')}?spotify=not_configured")
+
+
+@login_required
+def spotify_callback(request):
+    vault_url = reverse("music_vault:vault")
+    if request.GET.get("error"):
+        return redirect(f"{vault_url}?spotify=denied")
+
+    state = request.GET.get("state")
+    expected_state = request.session.pop("spotify_oauth_state", None)
+    code = request.GET.get("code")
+    if not code or not state or state != expected_state:
+        return redirect(f"{vault_url}?spotify=error")
+
+    redirect_uri = request.build_absolute_uri(reverse("music_vault:spotify-callback"))
+    try:
+        data = oauth.exchange_code(code, redirect_uri)
+    except (ImproperlyConfigured, requests.RequestException):
+        return redirect(f"{vault_url}?spotify=error")
+
+    account, _ = SpotifyAccount.objects.get_or_create(
+        user=request.user,
+        defaults={"access_token": "", "refresh_token": "", "expires_at": 0},
+    )
+    account.access_token = data["access_token"]
+    if data.get("refresh_token"):
+        account.refresh_token = data["refresh_token"]
+    account.expires_at = time.time() + data.get("expires_in", 3600)
+    account.scope = data.get("scope", "")
+    account.save()
+    return redirect(f"{vault_url}?spotify=connected")
+
+
+class SpotifyStatusView(ApiView):
+    def get(self, request):
+        connected = SpotifyAccount.objects.filter(user=request.user).exists()
+        return JsonResponse({"connected": connected})
+
+
+class SpotifyDisconnectView(ApiView):
+    def post(self, request):
+        SpotifyAccount.objects.filter(user=request.user).delete()
+        return JsonResponse({"connected": False})
+
+
+class AlbumPlayView(ApiView):
+    def post(self, request, pk):
+        album = self.get_album(request, pk)
+        if album is None:
+            return JsonResponse({"error": "Album not found"}, status=404)
+        context_uri = normalize_context_uri(album.spotify_uri)
+        if not context_uri:
+            return JsonResponse({"error": "This album has no Spotify link"}, status=400)
+        try:
+            account = SpotifyAccount.objects.get(user=request.user)
+        except SpotifyAccount.DoesNotExist:
+            return JsonResponse(
+                {"error": "Connect your Spotify account first", "code": "not_connected"}, status=409
+            )
+        try:
+            PlayerClient(account).play(context_uri)
+        except NoActiveDevice:
+            return JsonResponse(
+                {"error": "Open Spotify on a device and try again", "code": "no_device"}, status=409
+            )
+        except requests.RequestException:
+            return JsonResponse({"error": "Spotify playback request failed"}, status=502)
+        return JsonResponse({"playing": True})

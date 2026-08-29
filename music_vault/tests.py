@@ -9,7 +9,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .models import Album, Library
+from .models import Album, Library, SpotifyAccount
 
 User = get_user_model()
 
@@ -332,6 +332,114 @@ class CoverDownloadTests(ApiTestCase):
         self.assertEqual(data["cover"], "https://example.com/other.jpg")
         self.assertEqual(data["coverFile"], "")
         self.assertFalse(os.path.exists(path))
+
+
+class SpotifyConnectTests(ApiTestCase):
+    """Authorization Code OAuth flow used to link an account for playback."""
+
+    creds = {"SPOTIFY_CLIENT_ID": "test-client-id", "SPOTIFY_CLIENT_SECRET": "test-secret"}
+
+    def connect_and_get_state(self):
+        with self.settings(**self.creds):
+            response = self.client.get(reverse("music_vault:spotify-connect"))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn("accounts.spotify.com/authorize", response.url)
+        from urllib.parse import parse_qs, urlparse
+        return parse_qs(urlparse(response.url).query)["state"][0]
+
+    def test_connect_redirects_to_spotify_with_client_id(self):
+        state = self.connect_and_get_state()
+        self.assertTrue(state)
+        self.assertEqual(self.client.session["spotify_oauth_state"], state)
+
+    def test_connect_without_credentials_redirects_not_configured(self):
+        with self.settings(SPOTIFY_CLIENT_ID="", SPOTIFY_CLIENT_SECRET=""):
+            response = self.client.get(reverse("music_vault:spotify-connect"))
+        self.assertIn("spotify=not_configured", response.url)
+
+    def test_callback_rejects_missing_state(self):
+        response = self.client.get(reverse("music_vault:spotify-callback"), {"code": "abc"})
+        self.assertIn("spotify=error", response.url)
+        self.assertFalse(SpotifyAccount.objects.filter(user=self.user).exists())
+
+    def test_callback_rejects_state_mismatch(self):
+        self.connect_and_get_state()
+        response = self.client.get(
+            reverse("music_vault:spotify-callback"), {"code": "abc", "state": "wrong"}
+        )
+        self.assertIn("spotify=error", response.url)
+        self.assertFalse(SpotifyAccount.objects.filter(user=self.user).exists())
+
+    def test_callback_user_denied_access(self):
+        response = self.client.get(reverse("music_vault:spotify-callback"), {"error": "access_denied"})
+        self.assertIn("spotify=denied", response.url)
+
+    @mock.patch("music_vault.spotify.oauth.exchange_code")
+    def test_callback_success_creates_account(self, exchange_code):
+        state = self.connect_and_get_state()
+        exchange_code.return_value = {
+            "access_token": "AT", "refresh_token": "RT", "expires_in": 3600, "scope": "user-read-playback-state",
+        }
+        with self.settings(**self.creds):
+            response = self.client.get(
+                reverse("music_vault:spotify-callback"), {"code": "abc", "state": state}
+            )
+        self.assertIn("spotify=connected", response.url)
+        account = SpotifyAccount.objects.get(user=self.user)
+        self.assertEqual(account.access_token, "AT")
+        self.assertEqual(account.refresh_token, "RT")
+
+    def test_status_reflects_connection(self):
+        self.assertFalse(self.client.get(reverse("music_vault:api-spotify-status")).json()["connected"])
+        SpotifyAccount.objects.create(user=self.user, access_token="a", refresh_token="r", expires_at=0)
+        self.assertTrue(self.client.get(reverse("music_vault:api-spotify-status")).json()["connected"])
+
+    def test_disconnect_removes_account(self):
+        SpotifyAccount.objects.create(user=self.user, access_token="a", refresh_token="r", expires_at=0)
+        response = self.client.post(reverse("music_vault:api-spotify-disconnect"))
+        self.assertFalse(response.json()["connected"])
+        self.assertFalse(SpotifyAccount.objects.filter(user=self.user).exists())
+
+
+class AlbumPlayTests(ApiTestCase):
+    def setUp(self):
+        super().setUp()
+        self.library = Library.objects.create(owner=self.user, name="Rock")
+        self.album = make_album(self.library, spotify_uri="spotify:album:abc123")
+
+    def test_play_requires_connected_account(self):
+        response = self.client.post(reverse("music_vault:api-album-play", args=[self.album.pk]))
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "not_connected")
+
+    def test_play_rejects_album_without_spotify_link(self):
+        SpotifyAccount.objects.create(user=self.user, access_token="a", refresh_token="r", expires_at=0)
+        album = make_album(self.library, title="No URI", spotify_uri="")
+        response = self.client.post(reverse("music_vault:api-album-play", args=[album.pk]))
+        self.assertEqual(response.status_code, 400)
+
+    @mock.patch("music_vault.views.PlayerClient")
+    def test_play_reports_no_active_device(self, player_client_cls):
+        from music_vault.spotify.player import NoActiveDevice
+        SpotifyAccount.objects.create(user=self.user, access_token="a", refresh_token="r", expires_at=0)
+        player_client_cls.return_value.play.side_effect = NoActiveDevice()
+        response = self.client.post(reverse("music_vault:api-album-play", args=[self.album.pk]))
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "no_device")
+
+    @mock.patch("music_vault.views.PlayerClient")
+    def test_play_success(self, player_client_cls):
+        SpotifyAccount.objects.create(user=self.user, access_token="a", refresh_token="r", expires_at=0)
+        player_client_cls.return_value.play.return_value = None
+        response = self.client.post(reverse("music_vault:api-album-play", args=[self.album.pk]))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["playing"])
+
+    def test_cannot_play_other_users_album(self):
+        theirs = Library.objects.create(owner=self.other, name="Not yours")
+        album = make_album(theirs, spotify_uri="spotify:album:abc123")
+        response = self.client.post(reverse("music_vault:api-album-play", args=[album.pk]))
+        self.assertEqual(response.status_code, 404)
 
 
 class SpotifyTests(ApiTestCase):
