@@ -161,6 +161,33 @@ checks.push(
   ['library view: shows the result count', libraryHtml.includes('1 of 1 albums')],
 )
 
+// Open the album's detail modal (real click on the card) and its tracklist.
+const albumCard = window.document.querySelector('[aria-label="OK Computer by Radiohead"]')
+if (!albumCard) throw new Error('Album card not found (aria-label mismatch?)')
+albumCard.click()
+await new Promise((r) => setTimeout(r, 50))
+const detailHtml = window.document.getElementById('root').innerHTML
+checks.push(
+  ['album detail: shows the album title as a heading', detailHtml.includes('<h2>OK Computer</h2>')],
+  [
+    'album detail: shows Play/Tracklist/Favorite/Edit/Delete actions',
+    ['Play on Spotify', 'Tracklist', 'Unfavorite', 'Edit', 'Delete'].every((s) => detailHtml.includes(s)),
+  ],
+)
+
+clickButtonContaining('Tracklist')
+await new Promise((r) => setTimeout(r, 50))
+const tracklistHtml = window.document.getElementById('root').innerHTML
+checks.push([
+  'tracklist modal: shows the track title and formatted duration (284000ms -> 4:44)',
+  tracklistHtml.includes('Airbag') && tracklistHtml.includes('4:44'),
+])
+
+// Escape closes the topmost (and only) modal — back to the library view.
+window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+await new Promise((r) => setTimeout(r, 30))
+checks.push(['tracklist modal: Escape closes it', !window.document.querySelector('.modal-backdrop')])
+
 // Navigate to Favorites and check the (favorited, in the fake state) album shows up there too.
 clickButtonContaining('Favorites')
 await new Promise((r) => setTimeout(r, 50))

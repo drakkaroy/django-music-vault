@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { deleteLibrary, playAlbum, SPOTIFY_CONNECT_URL, toggleFavorite } from './api/client'
+import { AlbumDetailModal } from './components/AlbumDetailModal'
 import { AlbumFormModal } from './components/AlbumFormModal'
 import { FavoritesView } from './components/FavoritesView'
 import { HomeView } from './components/HomeView'
@@ -7,6 +8,7 @@ import { LibraryFormModal } from './components/LibraryFormModal'
 import { LibraryView } from './components/LibraryView'
 import { Sidebar } from './components/Sidebar'
 import { ToastStack } from './components/ToastStack'
+import { TracklistModal } from './components/TracklistModal'
 import { useVault } from './context/VaultContext'
 import type { Album, Library } from './types/api'
 
@@ -17,12 +19,14 @@ interface Route {
   libId: string | null
 }
 
-// More variants (spotify-search, album-detail, tracklist) land here as each
-// modal gets ported — one state machine instead of a bag of booleans, same
-// idea as the vanilla app's single #modalRoot.
+// More variants (spotify-search) land here as that modal gets ported — one
+// state machine instead of a bag of booleans, same idea as the vanilla
+// app's single #modalRoot.
 type ModalState =
   | { type: 'library-form'; library?: Library }
   | { type: 'album-form'; libraryId: string; album?: Album }
+  | { type: 'album-detail'; library: Library; album: Album }
+  | { type: 'tracklist'; album: Album }
   | null
 
 function errorMessage(err: unknown): string {
@@ -40,20 +44,21 @@ export default function App() {
     setSidebarOpen(false)
   }
 
-  const comingSoon = () => pushToast('Not ported yet — coming in the next pass 🚧', '🚧')
-
-  const handlePlayAlbum = async (album: Album) => {
+  const handlePlayAlbum = async (album: Album, trackUri?: string) => {
     if (!spotifyConnected) {
       pushToast('Connect your Spotify account first — see the sidebar 🎧', '⚠')
       return
     }
     try {
-      await playAlbum(album.id)
-      pushToast('Now playing on Spotify ▶')
+      await playAlbum(album.id, trackUri)
+      pushToast(trackUri ? 'Now playing this track ▶' : 'Now playing on Spotify ▶')
     } catch (err) {
       pushToast(errorMessage(err), '⚠')
     }
   }
+
+  const openAlbumDetail = (album: Album, library: Library) =>
+    setModal({ type: 'album-detail', library, album })
 
   const handleToggleFavorite = async (album: Album) => {
     try {
@@ -124,7 +129,10 @@ export default function App() {
           {route.view === 'favorites' && (
             <FavoritesView
               libraries={state.libraries}
-              onOpenAlbum={comingSoon}
+              onOpenAlbum={(album) => {
+                const owner = state.libraries.find((l) => l.albums.some((a) => a.id === album.id))
+                if (owner) openAlbumDetail(album, owner)
+              }}
               onPlayAlbum={handlePlayAlbum}
               onToggleFavorite={handleToggleFavorite}
             />
@@ -136,7 +144,7 @@ export default function App() {
               onAddAlbum={() => setModal({ type: 'album-form', libraryId: activeLibrary.id })}
               onEditLibrary={() => setModal({ type: 'library-form', library: activeLibrary })}
               onDeleteLibrary={() => handleDeleteLibrary(activeLibrary)}
-              onOpenAlbum={comingSoon}
+              onOpenAlbum={(album) => openAlbumDetail(album, activeLibrary)}
               onPlayAlbum={handlePlayAlbum}
               onToggleFavorite={handleToggleFavorite}
             />
@@ -156,6 +164,24 @@ export default function App() {
           libraryName={state.libraries.find((l) => l.id === modal.libraryId)?.name ?? ''}
           album={modal.album}
           onClose={() => setModal(null)}
+        />
+      )}
+      {modal?.type === 'album-detail' && (
+        <AlbumDetailModal
+          library={modal.library}
+          album={modal.album}
+          onClose={() => setModal(null)}
+          onEdit={() => setModal({ type: 'album-form', libraryId: modal.library.id, album: modal.album })}
+          onOpenTracklist={() => setModal({ type: 'tracklist', album: modal.album })}
+          onPlay={() => handlePlayAlbum(modal.album)}
+          onToggleFavorite={() => handleToggleFavorite(modal.album)}
+        />
+      )}
+      {modal?.type === 'tracklist' && (
+        <TracklistModal
+          album={modal.album}
+          onClose={() => setModal(null)}
+          onPlayTrack={(trackUri) => handlePlayAlbum(modal.album, trackUri)}
         />
       )}
       <ToastStack />
