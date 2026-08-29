@@ -7,7 +7,17 @@ def _epoch_ms(dt):
     return int(dt.timestamp() * 1000)
 
 
+def _track_to_dict(track):
+    return {
+        "trackNumber": track.get("track_number"),
+        "title": track.get("title", ""),
+        "durationMs": track.get("duration_ms") or 0,
+        "spotifyUri": track.get("spotify_uri", ""),
+    }
+
+
 def album_to_dict(album):
+    tracks = sorted(album.tracks or [], key=lambda t: t.get("track_number") or 0)
     return {
         "id": str(album.pk),
         "title": album.title,
@@ -20,6 +30,7 @@ def album_to_dict(album):
         "coverFile": album.cover_file.url if album.cover_file else "",
         "spotifyUri": album.spotify_uri,
         "tags": album.tags or [],
+        "tracks": [_track_to_dict(t) for t in tracks],
         "favorite": album.favorite,
         "addedAt": _epoch_ms(album.created_at),
     }
@@ -41,6 +52,33 @@ def library_to_dict(library, albums=None):
 ALBUM_REQUIRED_FIELDS = ("title", "artist", "year", "genre", "country")
 
 
+def _clean_tracks(tracks):
+    """Validate/normalize the frontend's track rows into storage shape.
+
+    Returns (cleaned_list, error_message)."""
+    if not isinstance(tracks, list):
+        return None, "Tracks must be a list"
+    cleaned = []
+    for i, t in enumerate(tracks, start=1):
+        if not isinstance(t, dict) or not str(t.get("title", "")).strip():
+            return None, f"Track {i}: title is required"
+        try:
+            duration_ms = max(int(t.get("durationMs") or 0), 0)
+        except (TypeError, ValueError):
+            return None, f"Track {i}: duration must be a number"
+        try:
+            track_number = int(t.get("trackNumber") or i)
+        except (TypeError, ValueError):
+            track_number = i
+        cleaned.append({
+            "track_number": track_number,
+            "title": str(t["title"]).strip()[:200],
+            "duration_ms": duration_ms,
+            "spotify_uri": str(t.get("spotifyUri", "")).strip()[:255],
+        })
+    return cleaned, None
+
+
 def clean_album_payload(data):
     """Validate and normalize an album payload from the frontend.
 
@@ -58,6 +96,9 @@ def clean_album_payload(data):
     tags = data.get("tags") or []
     if not isinstance(tags, list) or not all(isinstance(t, str) for t in tags):
         return None, "Tags must be a list of strings"
+    tracks, error = _clean_tracks(data.get("tracks") or [])
+    if error:
+        return None, error
     return {
         "title": str(data["title"]).strip()[:200],
         "artist": str(data["artist"]).strip()[:200],
@@ -68,6 +109,7 @@ def clean_album_payload(data):
         "cover_url": str(data.get("cover", "")).strip()[:500],
         "spotify_uri": str(data.get("spotifyUri", "")).strip()[:255],
         "tags": [t.strip()[:50] for t in tags if t.strip()],
+        "tracks": tracks,
     }, None
 
 

@@ -19,9 +19,10 @@ Rules that must hold:
 - **datetimes are epoch milliseconds** (`addedAt`, `createdAt`), not ISO strings.
 - **keys are camelCase** (`spotifyUri`, `coverFile`, not `spotify_uri`/`cover_file`).
 
-Album shape: `{id, title, artist, year, genre, country, label, cover, coverFile, spotifyUri, tags[], favorite, addedAt}`.
+Album shape: `{id, title, artist, year, genre, country, label, cover, coverFile, spotifyUri, tags[], tracks[], favorite, addedAt}`.
 - `cover` — the remote URL (from Spotify or typed manually).
 - `coverFile` — media URL of a locally downloaded copy, or `""`. The frontend's `coverOf()` prefers this over `cover` when present.
+- `tracks` — `[{trackNumber, title, durationMs, spotifyUri}, ...]`, sorted by `trackNumber`. See [Tracks](#tracks) below — like `tags`, this is a flat `JSONField` list, not a separate model.
 
 `clean_album_payload`/`clean_library_payload` in `serializers.py` are the single validation point for both the create and update paths (and `ImportView`, which reuses them per-album/per-library during a backup restore).
 
@@ -42,7 +43,7 @@ All under wherever `music_vault.urls` is mounted (`/` in the standalone project)
 | GET | `api/spotify/albums/<spotify_id>/` | normalized detail |
 | GET | `api/spotify/status/` | `{connected: bool}` |
 | POST | `api/spotify/disconnect/` | removes the user's `SpotifyAccount` |
-| POST | `api/albums/<id>/play/` | Spotify Connect playback |
+| POST | `api/albums/<id>/play/` | Spotify Connect playback; optional `{trackUri}` jumps to that track within the album's context |
 | GET | `spotify/connect/` | redirect into Spotify's consent screen (not JSON) |
 | GET | `spotify/callback/` | OAuth redirect target (not JSON) |
 
@@ -57,13 +58,23 @@ This is a **best-effort, SSRF-guarded** fetch:
 
 On edit, if the cover URL changes, the stale local file is deleted before a new one is (optionally) fetched. A `post_delete` signal on `Album` removes the file when the album itself is deleted.
 
+## Tracks
+
+`Album.tracks` is a `JSONField(default=list)` — a list of `{track_number, title, duration_ms, spotify_uri}` dicts — not a separate `Track` model. This is the same tradeoff already made for `tags` (see [architecture.md](architecture.md#data-model)): nothing in the app ever needs to query, filter, or paginate a track independently of its album, so a relational table would add migration/view/serializer surface for no real benefit. `_clean_tracks()` in `serializers.py` validates each row (title required, duration/track number coerced to non-negative ints, defaulting track number to the row's position when omitted) and is shared by create, update, and `ImportView`.
+
+Two ways tracks get populated:
+- **Imported from Spotify**: `_normalize_album()` (see below) extracts `tracks` from the full `/albums/{id}` response when the user previews and saves a search result — the frontend sends them straight through on save.
+- **Entered manually**: the album form's track-row editor (`script.js`) — see [frontend.md](frontend.md).
+
+Playing a single track (`api/albums/<id>/play/` with `{trackUri}`) doesn't need a track's own id — the frontend already has the `spotifyUri` from the loaded album, and `PlayerClient.play()` takes it directly as an `offset` inside the album's context (see below). The view only accepts a `trackUri` that starts with `spotify:track:` — anything else is silently ignored (falls back to playing the album from the top) rather than erroring, since a malformed value here is a client bug, not something worth failing the whole play request over.
+
 ## Spotify integrations
 
 There are **two independent Spotify auth flows** — don't conflate them:
 
 ### 1. Client-credentials (`spotify/auth.py`, `client.py`, `service.py`) — search/autofill
 
-App-level auth, no user login with Spotify. `SpotifyAuth` caches a token in memory; `SpotifyClient` wraps `/search` and `/albums/<id>` with 429 retry/backoff; `service.get_service()` is a lazy singleton that raises `ImproperlyConfigured` (→ 503 in the view) if `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` aren't set. `_normalize_album()` reshapes Spotify's response into the flat dict the frontend's search modal and album-form prefill expect.
+App-level auth, no user login with Spotify. `SpotifyAuth` caches a token in memory; `SpotifyClient` wraps `/search` and `/albums/<id>` with 429 retry/backoff; `service.get_service()` is a lazy singleton that raises `ImproperlyConfigured` (→ 503 in the view) if `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` aren't set. `_normalize_album()` reshapes Spotify's response into the flat dict the frontend's search modal and album-form prefill expect — including a `tracks` list (only present on the full album detail fetch, not on search result items, since Spotify's `/search` doesn't include a tracklist). Note this endpoint's JSON is **not** the frontend's camelCase album contract — it's `snake_case` throughout (`cover_url`, `release_date`, `track_number`, ...), and the album form converts it once when prefilling from an import.
 
 This flow can only read public catalog data — it cannot see devices or control playback.
 
@@ -72,7 +83,7 @@ This flow can only read public catalog data — it cannot see devices or control
 Per-user OAuth, needed because starting playback requires acting *as* a specific user on *their* devices.
 
 - `oauth.py`: `authorize_url()`, `exchange_code()`, `refresh_access_token()` — thin wrappers over Spotify's `/authorize` and `/api/token`.
-- `player.py`: `PlayerClient(account)` wraps a user's `SpotifyAccount`, auto-refreshing the access token when it's within 30s of expiring (and persisting the refreshed token back to the DB). `.play(context_uri)` tries the user's currently active device first; on a 404 (`NO_ACTIVE_DEVICE`) it falls back to the first device from `/me/player/devices`, or raises `NoActiveDevice` if there are none. `normalize_context_uri()` accepts either a `spotify:album:...` URI or an `open.spotify.com/album/...` share link in the album's `spotifyUri` field, since that field is free text.
+- `player.py`: `PlayerClient(account)` wraps a user's `SpotifyAccount`, auto-refreshing the access token when it's within 30s of expiring (and persisting the refreshed token back to the DB). `.play(context_uri, offset_uri=None)` tries the user's currently active device first; on a 404 (`NO_ACTIVE_DEVICE`) it falls back to the first device from `/me/player/devices`, or raises `NoActiveDevice` if there are none. `offset_uri` (a `spotify:track:...` URI) plays the whole album context starting at that track, rather than just that track in isolation — chosen deliberately so playback continues into the rest of the album afterward, matching Spotify's own apps. `normalize_context_uri()` accepts either a `spotify:album:...` URI or an `open.spotify.com/album/...` share link in the album's `spotifyUri` field, since that field is free text.
 - `views.spotify_connect`/`spotify_callback` are **plain Django views, not `ApiView`** — OAuth requires a real browser redirect to Spotify's consent screen, which `fetch()` cannot do. The OAuth `state` param is stored in `request.session` and checked on callback to guard against CSRF on the callback endpoint.
 - `SpotifyAccount.access_token`/`refresh_token` are stored **in plaintext**. Deliberate for this self-hosted, single-tenant-per-deployment app — see [configuration.md](configuration.md) before changing this if the deployment model ever changes (multi-tenant, exposed beyond trusted users).
 

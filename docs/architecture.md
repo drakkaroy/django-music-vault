@@ -25,11 +25,11 @@ This is what makes it installable in an unrelated Django project via pip. A cons
 User (host project's AUTH_USER_MODEL)
   └─ Library (owner FK)            name, description, color
        └─ Album (library FK)       title, artist, year, genre, country, label,
-                                    cover_url, cover_file, spotify_uri, tags[], favorite
+                                    cover_url, cover_file, spotify_uri, tags[], tracks[], favorite
   └─ SpotifyAccount (user OneToOne)  access_token, refresh_token, expires_at, scope
 ```
 
-- `Library`/`Album` are a flat, denormalized mirror of what the original VinylVault frontend kept in `localStorage` — no separate `Genre`/`Tag` tables, `tags` is just a `JSONField` list. That's deliberate: this app's job is to be the *persistence layer* for an existing UI's exact data shape, not to redesign the domain model. See [backend.md](backend.md#json-contract) for why this also constrains the API's JSON shape.
+- `Library`/`Album` are a flat, denormalized mirror of what the original VinylVault frontend kept in `localStorage` — no separate `Genre`/`Tag`/`Track` tables, `tags` and `tracks` are just `JSONField` lists. That's deliberate: this app's job is to be the *persistence layer* for an existing UI's exact data shape, not to redesign the domain model. See [backend.md](backend.md#json-contract) and [backend.md#tracks](backend.md#tracks) for why this also constrains the API's JSON shape.
 - `SpotifyAccount` is unrelated to `Library`/`Album` — it exists only so the ▶ Play button can control playback on the user's own Spotify Connect devices. See [backend.md](backend.md#spotify-integrations).
 
 ## Request flow

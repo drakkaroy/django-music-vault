@@ -45,6 +45,19 @@ def _normalize_album(album: dict) -> dict:
 
     artist_names = [a["name"] for a in album.get("artists", [])]
 
+    # Only the full "/albums/{id}" response includes "tracks" (search results
+    # don't) — absent here just means an empty list, which is fine since the
+    # frontend only needs a tracklist once it fetches an album's full detail.
+    tracks = [
+        {
+            "track_number": t.get("track_number"),
+            "title": t.get("name"),
+            "duration_ms": t.get("duration_ms"),
+            "spotify_uri": t.get("uri"),
+        }
+        for t in album.get("tracks", {}).get("items", [])
+    ]
+
     return {
         "spotify_id": album.get("id"),
         "spotify_uri": album.get("uri"),
@@ -57,4 +70,5 @@ def _normalize_album(album: dict) -> dict:
         "album_type": album.get("album_type"),
         "label": album.get("label"),
         "genres": album.get("genres", []),
+        "tracks": tracks,
     }

@@ -51,6 +51,19 @@ function genCover(artist, title){
 const coverOf = a => (a.coverFile && a.coverFile.trim()) ? a.coverFile
   : (a.cover && a.cover.trim() ? a.cover : genCover(a.artist, a.title));
 
+/* ---------- Track duration helpers (m:ss <-> ms) ---------- */
+function fmtDuration(ms){
+  const total = Math.round((ms || 0) / 1000);
+  const m = Math.floor(total / 60), s = total % 60;
+  return `${m}:${String(s).padStart(2, '0')}`;
+}
+function parseDuration(str){
+  const parts = String(str || '').trim().split(':').map(Number);
+  if (!parts.length || parts.some(isNaN)) return 0;
+  if (parts.length === 1) return Math.max(parts[0], 0) * 1000;
+  return Math.max(parts[0] * 60 + parts[1], 0) * 1000;
+}
+
 /* ---------- State ---------- */
 let state = { libraries: [] };
 let spotifyConnected = false;
@@ -311,14 +324,14 @@ function bindAlbumCards(scope){
   }));
 }
 
-async function playAlbum(albumId){
+async function playAlbum(albumId, trackUri){
   if (!spotifyConnected){
     toast('Connect your Spotify account first — see the sidebar 🎧', '⚠');
     return;
   }
   try {
-    await api(`albums/${albumId}/play/`, 'POST');
-    toast('Now playing on Spotify ▶');
+    await api(`albums/${albumId}/play/`, 'POST', trackUri ? { trackUri } : null);
+    toast(trackUri ? 'Now playing this track ▶' : 'Now playing on Spotify ▶');
   } catch (err){ toast(err.message, '⚠'); }
 }
 
@@ -396,6 +409,7 @@ function openAlbumDetail(libId, albumId){
         ${(a.tags || []).length ? `<div class="detail-tags">${a.tags.map(t => `<span class="tg">#${esc(t)}</span>`).join('')}</div>` : ''}
         <div class="detail-actions">
           <button class="btn btn-accent" data-d="play">▶ Play on Spotify</button>
+          ${(a.tracks || []).length ? '<button class="btn btn-ghost" data-d="tracklist">☰ Tracklist</button>' : ''}
           <button class="btn btn-ghost" data-d="fav">${a.favorite ? '♥ Unfavorite' : '♡ Favorite'}</button>
           <button class="btn btn-ghost" data-d="edit">✎ Edit</button>
           <button class="btn btn-danger" data-d="del">Delete</button>
@@ -404,6 +418,7 @@ function openAlbumDetail(libId, albumId){
     </div>`, true);
   bd.querySelector('[data-x]').onclick = closeModal;
   bd.querySelector('[data-d="play"]').onclick = () => playAlbum(albumId);
+  bd.querySelector('[data-d="tracklist"]')?.addEventListener('click', () => openTracklist(libId, albumId));
   bd.querySelector('[data-d="fav"]').onclick = () => { toggleFav(libId, albumId); closeModal(); };
   bd.querySelector('[data-d="edit"]').onclick = () => openAlbumForm(libId, a);
   bd.querySelector('[data-d="del"]').onclick = async () => {
@@ -415,6 +430,27 @@ function openAlbumDetail(libId, albumId){
       } catch (err){ toast(err.message, '⚠'); }
     }
   };
+}
+
+/* ---------- Tracklist modal ---------- */
+function openTracklist(libId, albumId){
+  const lib = findLib(libId); const a = lib?.albums.find(x => x.id === albumId);
+  if (!a || !(a.tracks || []).length) return;
+  const bd = openModal(`
+    <button class="icon-btn modal-close" data-x aria-label="Close">✕</button>
+    <h2>${esc(a.title)}</h2>
+    <div class="artist" style="margin-bottom:18px">${esc(a.artist)}</div>
+    <ol class="track-list">
+      ${a.tracks.map(t => `
+        <li class="track-row">
+          <span class="tr-num">${t.trackNumber ?? ''}</span>
+          <span class="tr-title">${esc(t.title)}</span>
+          <span class="tr-dur">${fmtDuration(t.durationMs)}</span>
+          ${t.spotifyUri ? `<button type="button" class="tr-play" data-track="${esc(t.spotifyUri)}" aria-label="Play ${esc(t.title)} on Spotify" title="Play on Spotify">▶</button>` : ''}
+        </li>`).join('')}
+    </ol>`);
+  bd.querySelector('[data-x]').onclick = closeModal;
+  bd.querySelectorAll('[data-track]').forEach(b => b.onclick = () => playAlbum(albumId, b.dataset.track));
 }
 
 /* ---------- Spotify search (add-album flow) ---------- */
@@ -512,6 +548,13 @@ function openAlbumForm(libId, album = null, spotify = null){
     cover: spotify.cover_url || '', spotifyUri: spotify.spotify_uri || '', tags: [], favorite: false,
   } : { title: '', artist: '', year: new Date().getFullYear(), genre: '', country: '', label: '', cover: '', spotifyUri: '', tags: [], favorite: false });
   let tags = [...(a.tags || [])];
+  // Spotify's normalized tracks are snake_case (a different, non-frontend
+  // contract — see docs/backend.md); the row editor's internal shape matches
+  // what the album API expects (camelCase), so convert once here.
+  let tracks = album ? (album.tracks || []).map(t => ({ ...t }))
+    : (spotify?.tracks || []).map(t => ({
+        trackNumber: t.track_number, title: t.title || '', durationMs: t.duration_ms || 0, spotifyUri: t.spotify_uri || '',
+      }));
   const bd = openModal(`
     <h2>${album ? 'Edit album' : 'Add album to ' + esc(lib.name)}</h2>
     <form id="albumForm">
@@ -529,6 +572,10 @@ function openAlbumForm(libId, album = null, spotify = null){
       </div>
       <div class="field"><label for="f-tags-in">Tags <span style="text-transform:none;font-weight:400">(unlimited — press Enter to add)</span></label>
         <div class="tag-editor" id="tagEditor"><input id="f-tags-in" placeholder="add a tag…" aria-label="Add tag"></div>
+      </div>
+      <div class="field"><label>Tracklist <span style="text-transform:none;font-weight:400">(optional — imported automatically from Spotify)</span></label>
+        <div class="track-editor" id="trackEditor"></div>
+        <button type="button" class="btn btn-ghost" id="addTrackBtn" style="margin-top:8px">+ Add track</button>
       </div>
       <div class="field"><label for="f-cover">Cover image URL</label>
         <input id="f-cover" type="url" value="${esc(a.cover || '')}" placeholder="https://i.scdn.co/image/… (640×640 works great)">
@@ -566,6 +613,31 @@ function openAlbumForm(libId, album = null, spotify = null){
       tags.pop(); renderTags();
     }
   });
+
+  const trackEditor = bd.querySelector('#trackEditor');
+  const renderTrackRows = () => {
+    trackEditor.innerHTML = tracks.map((t, i) => `
+      <div class="track-row-edit" data-i="${i}">
+        <input class="tr-num" type="number" min="1" value="${t.trackNumber ?? i + 1}" aria-label="Track number">
+        <input class="tr-title" type="text" value="${esc(t.title)}" placeholder="Track title" aria-label="Track title">
+        <input class="tr-dur" type="text" value="${t.durationMs ? fmtDuration(t.durationMs) : ''}" placeholder="m:ss" aria-label="Duration">
+        <button type="button" class="tr-remove" aria-label="Remove track">✕</button>
+      </div>`).join('');
+    trackEditor.querySelectorAll('.track-row-edit').forEach(row => {
+      const i = +row.dataset.i;
+      row.querySelector('.tr-num').addEventListener('input', e => { tracks[i].trackNumber = +e.target.value || (i + 1); });
+      row.querySelector('.tr-title').addEventListener('input', e => { tracks[i].title = e.target.value; });
+      row.querySelector('.tr-dur').addEventListener('input', e => { tracks[i].durationMs = parseDuration(e.target.value); });
+      row.querySelector('.tr-remove').onclick = () => { tracks.splice(i, 1); renderTrackRows(); };
+    });
+  };
+  renderTrackRows();
+  bd.querySelector('#addTrackBtn').onclick = () => {
+    tracks.push({ trackNumber: tracks.length + 1, title: '', durationMs: 0, spotifyUri: '' });
+    renderTrackRows();
+    trackEditor.querySelector('.track-row-edit:last-child .tr-title')?.focus();
+  };
+
   bd.querySelector('[data-x]').onclick = closeModal;
   bd.querySelector('#albumForm').addEventListener('submit', async e => {
     e.preventDefault();
@@ -573,6 +645,9 @@ function openAlbumForm(libId, album = null, spotify = null){
     const data = { title: g('#f-title'), artist: g('#f-artist'), year: +g('#f-year'),
       genre: g('#f-genre'), country: g('#f-country'), label: g('#f-label'),
       cover: g('#f-cover'), spotifyUri: g('#f-uri'), tags,
+      tracks: tracks.filter(t => t.title.trim()).map(t => ({
+        trackNumber: t.trackNumber, title: t.title.trim(), durationMs: t.durationMs, spotifyUri: t.spotifyUri || '',
+      })),
       downloadCover: !!spotify };
     try {
       if (album){ await api(`albums/${album.id}/`, 'PUT', data); toast('Album updated'); }

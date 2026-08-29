@@ -35,3 +35,33 @@
 @media(max-width:640px){.sp-preview{grid-template-columns:1fr}}
 
 .sp-manual-row{justify-content:center;border-top:1px solid var(--border);padding-top:14px;margin-top:20px}
+
+/* ---------- Track editor (album form) ---------- */
+.track-editor{display:flex;flex-direction:column;gap:6px}
+.track-row-edit{
+  display:grid;grid-template-columns:52px 1fr 72px 30px;gap:8px;align-items:center;
+  background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);padding:6px 8px;
+}
+.track-row-edit input{
+  background:none;border:none;color:var(--text);font-size:13px;padding:5px;min-width:0;
+}
+.track-row-edit input:focus{outline:none}
+.track-row-edit .tr-num{text-align:center;-moz-appearance:textfield}
+.track-row-edit .tr-dur{text-align:right}
+.track-row-edit .tr-remove{color:var(--text-faint);font-size:13px;justify-self:center}
+.track-row-edit .tr-remove:hover{color:var(--danger)}
+
+/* ---------- Tracklist modal ---------- */
+.track-list{list-style:none;max-height:56vh;overflow-y:auto}
+.track-row{
+  display:grid;grid-template-columns:28px 1fr auto 34px;gap:12px;align-items:center;
+  padding:9px 4px;border-bottom:1px solid var(--border);font-size:13.5px;
+}
+.track-row:last-child{border-bottom:none}
+.track-row .tr-num{color:var(--text-faint);text-align:right}
+.track-row .tr-dur{color:var(--text-dim);font-variant-numeric:tabular-nums}
+.track-row .tr-play{
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:var(--bg-elev);color:var(--text);font-size:11px;transition:background .15s,color .15s;
+}
+.track-row .tr-play:hover{background:var(--accent);color:#04220f}

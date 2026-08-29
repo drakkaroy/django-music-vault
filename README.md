@@ -6,7 +6,8 @@ Reusable Django app for cataloging your music collection: libraries, albums, unl
 
 ## Features
 
-- **Libraries** with name, description and color; **albums** with title, artist, year, genre, country, label, cover, Spotify URI and unlimited tags.
+- **Libraries** with name, description and color; **albums** with title, artist, year, genre, country, label, cover, Spotify URI, unlimited tags, and an optional tracklist.
+- **Tracklists**: imported automatically (with duration and per-track Spotify links) when you add an album from Spotify search, or entered manually — either way, play a single track from the album's Tracklist view.
 - **Favorites**, live search, combinable filters (genre/country/decade/tags) and sorting — all in the bundled frontend.
 - **Export / Import JSON** of your whole collection.
 - **JSON REST API** (no extra dependencies, just Django) with session auth; each user only sees their own data.
@@ -62,6 +63,7 @@ python manage.py test music_vault
 
 - [x] Autofill the album form from Spotify search in the UI (with local cover download)
 - [x] Real playback via Spotify Connect (per-user OAuth)
+- [x] Tracklists (imported or manual) with per-track playback
 - [ ] Star ratings and collection statistics
 
 ## License
