@@ -18,21 +18,7 @@ Open <http://localhost:8000/> and sign in. See [configuration.md](configuration.
 
 ## As a package in another project
 
-```bash
-pip install git+https://github.com/drakkaroy/django-music-vault.git
-```
-
-```python
-# settings.py
-INSTALLED_APPS = [..., "music_vault"]
-SPOTIFY_CLIENT_ID = "..."       # optional, for search/autofill
-SPOTIFY_CLIENT_SECRET = "..."
-
-# urls.py
-urlpatterns = [..., path("music/", include("music_vault.urls"))]
-```
-
-The main view requires an authenticated user (standard Django `LOGIN_URL`). See [architecture.md](architecture.md#the-decoupling-rule) for what the package does and doesn't assume about the host project, and [configuration.md](configuration.md#separate-database-optional) for isolating its tables in their own database.
+See [integration.md](integration.md) for the full step-by-step checklist (install, `INSTALLED_APPS`, urls, auth — the package ships no login view/template, migrate, and the optional Spotify/media/database-isolation steps).
 
 ## Tests
 

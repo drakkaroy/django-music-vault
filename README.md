@@ -46,7 +46,7 @@ SPOTIFY_CLIENT_SECRET = "..."
 urlpatterns = [..., path("music/", include("music_vault.urls"))]
 ```
 
-The main view requires an authenticated user (standard Django `LOGIN_URL`). See [docs/architecture.md](docs/architecture.md) for what the package assumes about its host, and [docs/configuration.md](docs/configuration.md) for isolating its tables in a separate database via `DATABASE_ROUTERS`.
+The main view requires an authenticated user — **the package ships no login page**, only the standalone `project/` in this repo has one, so bring your own. Full checklist (auth, migrations, optional Spotify/media/database-isolation steps): **[docs/integration.md](docs/integration.md)**.
 
 ## API
 
