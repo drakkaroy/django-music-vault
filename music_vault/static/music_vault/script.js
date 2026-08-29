@@ -45,7 +45,9 @@ function genCover(artist, title){
   </svg>`;
   return 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
 }
-const coverOf = a => a.cover && a.cover.trim() ? a.cover : genCover(a.artist, a.title);
+// prefer the locally stored copy (coverFile), fall back to the remote URL
+const coverOf = a => (a.coverFile && a.coverFile.trim()) ? a.coverFile
+  : (a.cover && a.cover.trim() ? a.cover : genCover(a.artist, a.title));
 
 /* ---------- State ---------- */
 let state = { libraries: [] };
@@ -259,7 +261,7 @@ function bindView(){
     if (act === 'open-lib') go('library', el.dataset.lib);
     if (act === 'new-lib') openLibForm();
     if (act === 'go-home') go('home');
-    if (act === 'add-album') openAlbumForm(route.libId);
+    if (act === 'add-album') openSpotifySearch(route.libId);
     if (act === 'edit-lib') openLibForm(findLib(route.libId));
     if (act === 'del-lib') confirmDeleteLib(route.libId);
     if (act === 'clear-filters'){ Object.assign(ui(route.libId), { q: '', genre: '', country: '', decade: '', sort: ui(route.libId).sort }); ui(route.libId).tags.clear(); render(); }
@@ -380,10 +382,100 @@ function openAlbumDetail(libId, albumId){
   };
 }
 
-/* ---------- Album form ---------- */
-function openAlbumForm(libId, album = null){
+/* ---------- Spotify search (add-album flow) ---------- */
+function openSpotifySearch(libId){
   const lib = findLib(libId);
-  const a = album || { title: '', artist: '', year: new Date().getFullYear(), genre: '', country: '', label: '', cover: '', spotifyUri: '', tags: [], favorite: false };
+  if (!lib) return;
+  let lastResults = null;
+  const bd = openModal(`
+    <button class="icon-btn modal-close" data-x aria-label="Close">✕</button>
+    <h2>Add album to ${esc(lib.name)}</h2>
+    <div class="sp-search-bar">
+      <input id="spQuery" type="search" placeholder="Search Spotify — artist or album name…" aria-label="Search Spotify">
+      <button class="btn btn-accent" id="spGo">Search</button>
+    </div>
+    <div id="spBody"><p class="sp-hint">Type an artist to browse their albums, or search an album straight away.</p></div>
+    <div class="modal-actions sp-manual-row">
+      <button class="btn btn-ghost" id="spManual">✎ Enter album manually instead</button>
+    </div>`, true);
+  const input = bd.querySelector('#spQuery');
+  const body = bd.querySelector('#spBody');
+
+  const renderResults = () => {
+    if (!lastResults.length){
+      body.innerHTML = '<p class="sp-hint">No albums found — try a different search.</p>';
+      return;
+    }
+    body.innerHTML = `<div class="sp-grid">${lastResults.map(r => `
+      <button class="sp-card" data-sp="${esc(r.spotify_id)}">
+        <img src="${esc(r.cover_url || genCover(r.artists.join(', '), r.name))}" alt="" loading="lazy">
+        <span class="sp-t">${esc(r.name)}</span>
+        <span class="sp-a">${esc(r.artists.join(', '))}</span>
+        <span class="sp-y">${esc((r.release_date || '').slice(0, 4))}${r.album_type && r.album_type !== 'album' ? ' · ' + esc(r.album_type) : ''}</span>
+      </button>`).join('')}</div>`;
+    body.querySelectorAll('[data-sp]').forEach(c => c.onclick = () => showPreview(c.dataset.sp));
+  };
+
+  async function runSearch(){
+    const q = input.value.trim();
+    if (!q) return;
+    body.innerHTML = '<p class="sp-hint">Searching Spotify…</p>';
+    try {
+      const data = await api(`spotify/search/?q=${encodeURIComponent(q)}&limit=20`);
+      lastResults = data.results;
+      renderResults();
+    } catch (err){ body.innerHTML = `<p class="sp-hint">⚠ ${esc(err.message)}</p>`; }
+  }
+
+  async function showPreview(spotifyId){
+    body.innerHTML = '<p class="sp-hint">Loading album…</p>';
+    try {
+      const a = await api(`spotify/albums/${encodeURIComponent(spotifyId)}/`);
+      const artists = (a.artists || []).join(', ');
+      body.innerHTML = `
+        <div class="sp-preview">
+          <img src="${esc(a.cover_url || genCover(artists, a.name))}" alt="Cover of ${esc(a.name)}">
+          <div>
+            <h3>${esc(a.name)}</h3>
+            <div class="sp-a">${esc(artists)}</div>
+            <dl class="spec">
+              <dt>Released</dt><dd>${esc(a.release_date || '—')}</dd>
+              <dt>Tracks</dt><dd>${a.total_tracks ?? '—'}</dd>
+              ${a.label ? `<dt>Label</dt><dd>${esc(a.label)}</dd>` : ''}
+              ${a.album_type ? `<dt>Type</dt><dd>${esc(a.album_type)}</dd>` : ''}
+            </dl>
+            ${a.external_url ? `<a class="sp-link" href="${esc(a.external_url)}" target="_blank" rel="noopener">Open in Spotify ↗</a>` : ''}
+            <div class="detail-actions">
+              <button class="btn btn-ghost" id="spBack">← Results</button>
+              <button class="btn btn-accent" id="spUse">💾 Save to library</button>
+            </div>
+          </div>
+        </div>`;
+      bd.querySelector('#spBack').onclick = () => lastResults ? renderResults() : runSearch();
+      bd.querySelector('#spUse').onclick = () => openAlbumForm(libId, null, a);
+    } catch (err){ body.innerHTML = `<p class="sp-hint">⚠ ${esc(err.message)}</p>`; }
+  }
+
+  let debounce;
+  input.addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(runSearch, 450); });
+  input.addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); clearTimeout(debounce); runSearch(); } });
+  bd.querySelector('#spGo').onclick = () => { clearTimeout(debounce); runSearch(); };
+  bd.querySelector('#spManual').onclick = () => openAlbumForm(libId);
+  bd.querySelector('[data-x]').onclick = closeModal;
+  input.focus();
+}
+
+/* ---------- Album form ---------- */
+function openAlbumForm(libId, album = null, spotify = null){
+  const lib = findLib(libId);
+  // `spotify` is a normalized album from the Spotify picker: prefill the
+  // form with its metadata and download the cover server-side on save.
+  const a = album || (spotify ? {
+    title: spotify.name || '', artist: (spotify.artists || []).join(', '),
+    year: +String(spotify.release_date || '').slice(0, 4) || new Date().getFullYear(),
+    genre: (spotify.genres || [])[0] || '', country: '', label: spotify.label || '',
+    cover: spotify.cover_url || '', spotifyUri: spotify.spotify_uri || '', tags: [], favorite: false,
+  } : { title: '', artist: '', year: new Date().getFullYear(), genre: '', country: '', label: '', cover: '', spotifyUri: '', tags: [], favorite: false });
   let tags = [...(a.tags || [])];
   const bd = openModal(`
     <h2>${album ? 'Edit album' : 'Add album to ' + esc(lib.name)}</h2>
@@ -405,7 +497,9 @@ function openAlbumForm(libId, album = null){
       </div>
       <div class="field"><label for="f-cover">Cover image URL</label>
         <input id="f-cover" type="url" value="${esc(a.cover || '')}" placeholder="https://i.scdn.co/image/… (640×640 works great)">
-        <p class="hint">Leave empty and I'll generate a nice vinyl-style cover automatically.</p></div>
+        <p class="hint">${spotify
+          ? 'This cover comes from Spotify — it will be downloaded and stored in your vault.'
+          : "Leave empty and I'll generate a nice vinyl-style cover automatically."}</p></div>
       <div class="field"><label for="f-uri">Spotify URI / link</label>
         <input id="f-uri" value="${esc(a.spotifyUri || '')}" placeholder="spotify:album:… (used later for the Play button)"></div>
       <div class="modal-actions">
@@ -443,7 +537,8 @@ function openAlbumForm(libId, album = null){
     const g = id => bd.querySelector(id).value.trim();
     const data = { title: g('#f-title'), artist: g('#f-artist'), year: +g('#f-year'),
       genre: g('#f-genre'), country: g('#f-country'), label: g('#f-label'),
-      cover: g('#f-cover'), spotifyUri: g('#f-uri'), tags };
+      cover: g('#f-cover'), spotifyUri: g('#f-uri'), tags,
+      downloadCover: !!spotify };
     try {
       if (album){ await api(`albums/${album.id}/`, 'PUT', data); toast('Album updated'); }
       else { await api(`libraries/${libId}/albums/`, 'POST', data); toast(`Added “${data.title}” to ${lib.name}`); }

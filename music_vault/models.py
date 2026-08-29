@@ -1,6 +1,8 @@
 from django.conf import settings
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models.signals import post_delete
+from django.dispatch import receiver
 
 
 class Library(models.Model):
@@ -37,6 +39,9 @@ class Album(models.Model):
     country = models.CharField(max_length=100)
     label = models.CharField(max_length=200, blank=True)
     cover_url = models.URLField(max_length=500, blank=True)
+    # Local copy of the cover (downloaded from Spotify's CDN on request);
+    # cover_url always keeps the original remote URL as fallback.
+    cover_file = models.FileField(upload_to="music_vault/covers/", blank=True)
     spotify_uri = models.CharField(max_length=255, blank=True)
     tags = models.JSONField(default=list, blank=True)
     favorite = models.BooleanField(default=False, db_index=True)
@@ -50,3 +55,10 @@ class Album(models.Model):
 
     def __str__(self):
         return f"{self.artist} — {self.title}"
+
+
+@receiver(post_delete, sender=Album)
+def _delete_cover_file(sender, instance, **kwargs):
+    """Remove the downloaded cover from storage when an album is deleted."""
+    if instance.cover_file:
+        instance.cover_file.delete(save=False)

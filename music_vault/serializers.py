@@ -17,6 +17,7 @@ def album_to_dict(album):
         "country": album.country,
         "label": album.label,
         "cover": album.cover_url,
+        "coverFile": album.cover_file.url if album.cover_file else "",
         "spotifyUri": album.spotify_uri,
         "tags": album.tags or [],
         "favorite": album.favorite,

@@ -8,7 +8,7 @@ Reusable Django app for cataloging your music collection: libraries, albums, unl
 - **Favorites**, live search, combinable filters (genre/country/decade/tags) and sorting — all in the bundled frontend.
 - **Export / Import JSON** of your whole collection.
 - **JSON REST API** (no extra dependencies, just Django) with session auth; each user only sees their own data.
-- **Spotify search/autofill** using client credentials (album search and normalized detail).
+- **Spotify search/autofill**: the "Add album" flow searches Spotify (by artist or album), shows a quick preview, prefills the form and downloads the cover art to local storage (client-credentials, no user OAuth needed).
 - No hardcoded database: uses the host project's `default` connection, or whatever you define with `DATABASE_ROUTERS`.
 
 ## Standalone usage (this repo)
@@ -98,7 +98,9 @@ All endpoints live under the prefix where you mount `music_vault.urls` (`/` in t
 | GET | `api/spotify/search/?q=&limit=` | Search albums on Spotify |
 | GET | `api/spotify/albums/<spotify_id>/` | Normalized detail of a Spotify album |
 
-Album format (mirrors the frontend): `{id, title, artist, year, genre, country, label, cover, spotifyUri, tags[], favorite, addedAt}` — ids as strings, dates as epoch ms.
+Album format (mirrors the frontend): `{id, title, artist, year, genre, country, label, cover, coverFile, spotifyUri, tags[], favorite, addedAt}` — ids as strings, dates as epoch ms. `cover` is the remote URL; `coverFile` is the media URL of the locally stored copy (empty if none) and the frontend prefers it.
+
+Album create/update accepts an optional `downloadCover: true` flag: when the cover URL points at Spotify's CDN (`i.scdn.co`), the image is downloaded and stored under `MEDIA_ROOT/music_vault/covers/` (best-effort — the album keeps its remote URL if the download fails). Host projects must configure `MEDIA_ROOT`/`MEDIA_URL` (and serve media) for this feature; the standalone project already does.
 
 ## Environment variables
 
@@ -116,8 +118,8 @@ python manage.py test music_vault
 
 ## Roadmap
 
+- [x] Autofill the album form from Spotify search in the UI (with local cover download)
 - [ ] Real playback via Spotify Connect (per-user OAuth)
-- [ ] Autofill the album form from Spotify search in the UI
 - [ ] Star ratings and collection statistics
 
 ## License

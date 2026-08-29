@@ -1,7 +1,12 @@
 import json
+import os
+import shutil
+import tempfile
+from unittest import mock
 
+import requests
 from django.contrib.auth import get_user_model
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .models import Album, Library
@@ -215,6 +220,118 @@ class ImportTests(ApiTestCase):
         response = self.post_json(reverse("music_vault:api-import"), backup)
         self.assertEqual(response.status_code, 400)
         self.assertTrue(Library.objects.filter(owner=self.user, name="Survivor").exists())
+
+
+class FakeImageResponse:
+    def __init__(self, content=b"\xff\xd8fake-jpeg", content_type="image/jpeg"):
+        self.headers = {"Content-Type": content_type}
+        self._content = content
+
+    def raise_for_status(self):
+        pass
+
+    def iter_content(self, chunk_size):
+        yield self._content
+
+
+class CoverDownloadTests(ApiTestCase):
+    @classmethod
+    def setUpClass(cls):
+        super().setUpClass()
+        cls._media_root = tempfile.mkdtemp()
+        cls._override = override_settings(MEDIA_ROOT=cls._media_root, MEDIA_URL="/media/")
+        cls._override.enable()
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._override.disable()
+        shutil.rmtree(cls._media_root, ignore_errors=True)
+        super().tearDownClass()
+
+    def setUp(self):
+        super().setUp()
+        self.library = Library.objects.create(owner=self.user, name="Rock")
+
+    def create_payload(self, **overrides):
+        payload = {
+            "title": "Discovery",
+            "artist": "Daft Punk",
+            "year": 2001,
+            "genre": "Electronic",
+            "country": "France",
+            "cover": "https://i.scdn.co/image/abc123",
+            "downloadCover": True,
+        }
+        payload.update(overrides)
+        return payload
+
+    def create_album(self):
+        return self.post_json(
+            reverse("music_vault:api-library-albums", args=[self.library.pk]),
+            self.create_payload(),
+        )
+
+    @mock.patch("music_vault.covers.requests.get")
+    def test_create_downloads_spotify_cover(self, get):
+        get.return_value = FakeImageResponse()
+        response = self.create_album()
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(data["cover"], "https://i.scdn.co/image/abc123")
+        self.assertTrue(data["coverFile"].startswith("/media/music_vault/covers/"))
+        album = Album.objects.get(pk=int(data["id"]))
+        self.assertTrue(os.path.exists(album.cover_file.path))
+
+    @mock.patch("music_vault.covers.requests.get")
+    def test_download_failure_keeps_remote_cover(self, get):
+        get.side_effect = requests.ConnectionError
+        response = self.create_album()
+        self.assertEqual(response.status_code, 201)
+        data = response.json()
+        self.assertEqual(data["cover"], "https://i.scdn.co/image/abc123")
+        self.assertEqual(data["coverFile"], "")
+
+    @mock.patch("music_vault.covers.requests.get")
+    def test_non_spotify_host_is_never_fetched(self, get):
+        response = self.post_json(
+            reverse("music_vault:api-library-albums", args=[self.library.pk]),
+            self.create_payload(cover="https://evil.example.com/internal.jpg"),
+        )
+        self.assertEqual(response.status_code, 201)
+        get.assert_not_called()
+        self.assertEqual(response.json()["coverFile"], "")
+
+    @mock.patch("music_vault.covers.requests.get")
+    def test_delete_album_removes_cover_file(self, get):
+        get.return_value = FakeImageResponse()
+        album_id = int(self.create_album().json()["id"])
+        path = Album.objects.get(pk=album_id).cover_file.path
+        self.assertTrue(os.path.exists(path))
+        response = self.client.delete(reverse("music_vault:api-album", args=[album_id]))
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(os.path.exists(path))
+
+    @mock.patch("music_vault.covers.requests.get")
+    def test_edit_keeps_file_when_cover_unchanged(self, get):
+        get.return_value = FakeImageResponse()
+        album_id = int(self.create_album().json()["id"])
+        payload = self.create_payload(title="Discovery (edited)", downloadCover=False)
+        response = self.put_json(reverse("music_vault:api-album", args=[album_id]), payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()["coverFile"].startswith("/media/"))
+
+    @mock.patch("music_vault.covers.requests.get")
+    def test_edit_with_new_cover_discards_stale_file(self, get):
+        get.return_value = FakeImageResponse()
+        album_id = int(self.create_album().json()["id"])
+        path = Album.objects.get(pk=album_id).cover_file.path
+        payload = self.create_payload(cover="https://example.com/other.jpg", downloadCover=False)
+        response = self.put_json(reverse("music_vault:api-album", args=[album_id]), payload)
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertEqual(data["cover"], "https://example.com/other.jpg")
+        self.assertEqual(data["coverFile"], "")
+        self.assertFalse(os.path.exists(path))
 
 
 class SpotifyTests(ApiTestCase):

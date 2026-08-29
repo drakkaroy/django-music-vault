@@ -10,6 +10,7 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie
 
+from .covers import fetch_cover
 from .models import Album, Library
 from .serializers import (
     album_to_dict,
@@ -49,6 +50,15 @@ class ApiView(View):
 
     def get_album(self, request, pk):
         return Album.objects.filter(library__owner=request.user, pk=pk).first()
+
+
+def _download_cover(album):
+    """Best effort: fetch the album's remote cover and store a local copy."""
+    filename, content = fetch_cover(album.cover_url)
+    if content is not None:
+        if album.cover_file:
+            album.cover_file.delete(save=False)
+        album.cover_file.save(filename, content)
 
 
 class StateView(ApiView):
@@ -96,6 +106,8 @@ class AlbumListView(ApiView):
         if error:
             return JsonResponse({"error": error}, status=400)
         album = Album.objects.create(library=library, **fields)
+        if self.payload.get("downloadCover"):
+            _download_cover(album)
         return JsonResponse(album_to_dict(album), status=201)
 
 
@@ -107,9 +119,15 @@ class AlbumDetailView(ApiView):
         fields, error = clean_album_payload(self.payload)
         if error:
             return JsonResponse({"error": error}, status=400)
+        cover_changed = fields["cover_url"] != album.cover_url
         for name, value in fields.items():
             setattr(album, name, value)
+        if cover_changed and album.cover_file:
+            album.cover_file.delete(save=False)
+            album.cover_file = ""
         album.save()
+        if self.payload.get("downloadCover"):
+            _download_cover(album)
         return JsonResponse(album_to_dict(album))
 
     def delete(self, request, pk):
