@@ -1,6 +1,7 @@
 import { getCookie, LOGOUT_URL } from '../api/client'
-import type { Library } from '../types/api'
 import type { View } from '../App'
+import type { Library } from '../types/api'
+import { FootButton, LibDot, NavItem } from './ui'
 
 interface SidebarProps {
   libraries: Library[]
@@ -31,37 +32,34 @@ export function Sidebar({
         <span className="logo" aria-hidden="true" />
         VinylVault
       </div>
-      <button className={`nav-item ${view === 'home' ? 'active' : ''}`} onClick={() => onNavigate('home')}>
-        <span className="nav-ico">⌂</span>Home
-      </button>
-      <button
-        className={`nav-item ${view === 'favorites' ? 'active' : ''}`}
+      <NavItem icon="⌂" label="Home" active={view === 'home'} onClick={() => onNavigate('home')} />
+      <NavItem
+        icon="♥"
+        label="Favorites"
+        count={favCount}
+        active={view === 'favorites'}
         onClick={() => onNavigate('favorites')}
-      >
-        <span className="nav-ico">♥</span>Favorites<span className="count">{favCount}</span>
-      </button>
+      />
       <div className="nav-section">Libraries</div>
       <div className="lib-list">
         {libraries.map((l) => (
-          <button
+          <NavItem
             key={l.id}
-            className={`nav-item ${view === 'library' && activeLibId === l.id ? 'active' : ''}`}
+            icon={<LibDot color={l.color} />}
+            label={
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {l.name}
+              </span>
+            }
+            count={l.albums.length}
+            active={view === 'library' && activeLibId === l.id}
             onClick={() => onNavigate('library', l.id)}
-          >
-            <span className="lib-dot" style={{ background: l.color }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {l.name}
-            </span>
-            <span className="count">{l.albums.length}</span>
-          </button>
+          />
         ))}
       </div>
-      <button className="nav-item" style={{ color: 'var(--accent)' }} onClick={onNewLibrary}>
-        <span className="nav-ico">＋</span>New library
-      </button>
+      <NavItem icon="＋" label="New library" style={{ color: 'var(--accent)' }} onClick={onNewLibrary} />
       <div className="sidebar-foot">
-        <button
-          className="foot-btn"
+        <FootButton
           onClick={onSpotifyClick}
           title={
             spotifyConnected
@@ -70,13 +68,13 @@ export function Sidebar({
           }
         >
           {spotifyConnected ? '🎧 Disconnect Spotify' : '🎧 Connect Spotify'}
-        </button>
+        </FootButton>
         {/* Export/Import: ported in a follow-up pass */}
         <form method="post" action={LOGOUT_URL} style={{ display: 'contents' }}>
           <input type="hidden" name="csrfmiddlewaretoken" value={getCookie('csrftoken')} />
-          <button className="foot-btn" type="submit" title="Sign out">
+          <FootButton type="submit" title="Sign out">
             ⏻ Logout
-          </button>
+          </FootButton>
         </form>
       </div>
     </nav>

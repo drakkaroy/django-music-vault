@@ -1,5 +1,6 @@
 import { coverOf } from '../lib/cover'
 import type { Library } from '../types/api'
+import { Button, LibDot } from './ui'
 
 interface HomeViewProps {
   libraries: Library[]
@@ -19,9 +20,9 @@ export function HomeView({ libraries, onOpenLibrary, onNewLibrary }: HomeViewPro
           </p>
         </div>
         <div className="head-actions">
-          <button className="btn btn-accent" onClick={onNewLibrary}>
+          <Button variant="accent" onClick={onNewLibrary}>
             ＋ New library
-          </button>
+          </Button>
         </div>
       </div>
       <div className="lib-grid">
@@ -49,7 +50,7 @@ export function HomeView({ libraries, onOpenLibrary, onNewLibrary }: HomeViewPro
                 )}
               </div>
               <h3>
-                <span className="lib-dot" style={{ background: l.color }} />
+                <LibDot color={l.color} />
                 {l.name}
               </h3>
               <p>{l.description}</p>
