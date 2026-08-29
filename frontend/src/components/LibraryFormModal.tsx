@@ -1,0 +1,86 @@
+import { useState, type FormEvent } from 'react'
+import { createLibrary, updateLibrary } from '../api/client'
+import { useVault } from '../context/VaultContext'
+import type { Library } from '../types/api'
+import { Button, ColorSwatch, Modal } from './ui'
+
+const LIB_COLORS = ['#e0654a', '#4a90e0', '#1ed760', '#b678e8', '#ffcf5c', '#ff5c8a', '#4ad4c9', '#8a93a5']
+
+interface LibraryFormModalProps {
+  /** Omitted = create mode. */
+  library?: Library
+  onClose: () => void
+  /** Only called on create, so the caller can navigate straight into the
+   * new library — matching the vanilla app's behavior. */
+  onCreated: (library: Library) => void
+}
+
+export function LibraryFormModal({ library, onClose, onCreated }: LibraryFormModalProps) {
+  const { state, refreshState, pushToast } = useVault()
+  const [name, setName] = useState(library?.name ?? '')
+  const [description, setDescription] = useState(library?.description ?? '')
+  const [color, setColor] = useState(library?.color ?? LIB_COLORS[state.libraries.length % LIB_COLORS.length])
+
+  const handleSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    try {
+      if (library) {
+        await updateLibrary(library.id, { name, description, color })
+        await refreshState()
+        pushToast('Library updated')
+        onClose()
+      } else {
+        const created = await createLibrary({ name, description, color })
+        await refreshState()
+        onClose()
+        onCreated(created)
+        pushToast(`Library "${name}" created — add your first album!`)
+      }
+    } catch (err) {
+      pushToast(err instanceof Error ? err.message : 'Something went wrong', '⚠')
+    }
+  }
+
+  return (
+    <Modal onClose={onClose}>
+      <h2>{library ? 'Edit library' : 'New library'}</h2>
+      <form onSubmit={handleSubmit}>
+        <div className="field">
+          <label htmlFor="l-name">Name *</label>
+          <input
+            id="l-name"
+            required
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. Jazz Nights"
+          />
+        </div>
+        <div className="field">
+          <label htmlFor="l-desc">Description</label>
+          <input
+            id="l-desc"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="What lives in this library?"
+          />
+        </div>
+        <div className="field">
+          <label>Color</label>
+          <div className="color-row">
+            {LIB_COLORS.map((c) => (
+              <ColorSwatch key={c} color={c} active={c === color} onClick={() => setColor(c)} />
+            ))}
+          </div>
+        </div>
+        <div className="modal-actions">
+          <Button variant="ghost" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button variant="accent" type="submit">
+            {library ? 'Save' : 'Create library'}
+          </Button>
+        </div>
+      </form>
+    </Modal>
+  )
+}

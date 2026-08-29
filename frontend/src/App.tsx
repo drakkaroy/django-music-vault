@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { deleteLibrary, playAlbum, SPOTIFY_CONNECT_URL, toggleFavorite } from './api/client'
 import { FavoritesView } from './components/FavoritesView'
 import { HomeView } from './components/HomeView'
+import { LibraryFormModal } from './components/LibraryFormModal'
 import { LibraryView } from './components/LibraryView'
 import { Sidebar } from './components/Sidebar'
 import { ToastStack } from './components/ToastStack'
@@ -15,6 +16,11 @@ interface Route {
   libId: string | null
 }
 
+// More variants (album-form, spotify-search, album-detail, tracklist) land
+// here as each modal gets ported — one state machine instead of a bag of
+// booleans, same idea as the vanilla app's single #modalRoot.
+type ModalState = { type: 'library-form'; library?: Library } | null
+
 function errorMessage(err: unknown): string {
   return err instanceof Error ? err.message : 'Something went wrong'
 }
@@ -23,6 +29,7 @@ export default function App() {
   const { state, loading, spotifyConnected, refreshState, disconnectSpotify, pushToast } = useVault()
   const [route, setRoute] = useState<Route>({ view: 'home', libId: null })
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [modal, setModal] = useState<ModalState>(null)
 
   const navigate = (view: View, libId?: string) => {
     setRoute({ view, libId: libId ?? null })
@@ -92,7 +99,7 @@ export default function App() {
         activeLibId={route.libId}
         open={sidebarOpen}
         onNavigate={navigate}
-        onNewLibrary={comingSoon}
+        onNewLibrary={() => setModal({ type: 'library-form' })}
         spotifyConnected={spotifyConnected}
         onSpotifyClick={() =>
           spotifyConnected ? disconnectSpotify() : (location.href = SPOTIFY_CONNECT_URL)
@@ -107,7 +114,7 @@ export default function App() {
             <HomeView
               libraries={state.libraries}
               onOpenLibrary={(id) => navigate('library', id)}
-              onNewLibrary={comingSoon}
+              onNewLibrary={() => setModal({ type: 'library-form' })}
             />
           )}
           {route.view === 'favorites' && (
@@ -123,7 +130,7 @@ export default function App() {
               library={activeLibrary}
               onBack={() => navigate('home')}
               onAddAlbum={comingSoon}
-              onEditLibrary={comingSoon}
+              onEditLibrary={() => setModal({ type: 'library-form', library: activeLibrary })}
               onDeleteLibrary={() => handleDeleteLibrary(activeLibrary)}
               onOpenAlbum={comingSoon}
               onPlayAlbum={handlePlayAlbum}
@@ -132,6 +139,13 @@ export default function App() {
           )}
         </div>
       </main>
+      {modal?.type === 'library-form' && (
+        <LibraryFormModal
+          library={modal.library}
+          onClose={() => setModal(null)}
+          onCreated={(created) => navigate('library', created.id)}
+        />
+      )}
       <ToastStack />
     </div>
   )

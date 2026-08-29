@@ -52,15 +52,30 @@ const fakeState = {
   ],
 }
 
-window.fetch = async (url) => {
+function json(data, status = 200) {
+  return new Response(JSON.stringify(data), { status, headers: { 'Content-Type': 'application/json' } })
+}
+
+let nextLibraryId = 2
+window.fetch = async (url, options = {}) => {
   const path = String(url)
-  if (path.includes('/api/state/')) {
-    return new Response(JSON.stringify(fakeState), { status: 200, headers: { 'Content-Type': 'application/json' } })
+  const method = options.method || 'GET'
+  if (path.includes('/api/state/')) return json(fakeState)
+  if (path.includes('/api/spotify/status/')) return json({ connected: false })
+  if (path.endsWith('/api/libraries/') && method === 'POST') {
+    const body = JSON.parse(options.body)
+    const created = {
+      id: String(nextLibraryId++),
+      name: body.name,
+      description: body.description || '',
+      color: body.color || '#e0654a',
+      createdAt: Date.now(),
+      albums: [],
+    }
+    fakeState.libraries.push(created)
+    return json(created, 201)
   }
-  if (path.includes('/api/spotify/status/')) {
-    return new Response(JSON.stringify({ connected: false }), { status: 200, headers: { 'Content-Type': 'application/json' } })
-  }
-  throw new Error(`Unmocked fetch in smoke test: ${path}`)
+  throw new Error(`Unmocked fetch in smoke test: ${method} ${path}`)
 }
 
 // Make jsdom's globals available to the bundle the way a real browser page would.
@@ -122,6 +137,35 @@ const favoritesHtml = window.document.getElementById('root').innerHTML
 checks.push(
   ['favorites view: shows the favorites heading', favoritesHtml.includes('♥ Favorites')],
   ['favorites view: renders the favorited album with its library name', favoritesHtml.includes('OK Computer') && favoritesHtml.includes('Rock')],
+)
+
+// React instruments HTMLInputElement's `value` setter to track changes for
+// controlled inputs; a plain `input.value = x` goes through that same
+// instrumented setter, so React's tracker sees "no change" and never fires
+// onChange. Using the *native* prototype setter first (same trick React
+// Testing Library's fireEvent.change uses) avoids that.
+const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
+function setInputValue(input, value) {
+  nativeInputValueSetter.call(input, value)
+  input.dispatchEvent(new window.Event('input', { bubbles: true }))
+}
+
+// Create a library through the real modal: open it, fill the name, submit,
+// and confirm the app navigates into the newly created library.
+clickButtonContaining('New library')
+await new Promise((r) => setTimeout(r, 50))
+const nameInput = window.document.querySelector('#l-name')
+if (!nameInput) throw new Error('Library form modal did not open (no #l-name input found)')
+setInputValue(nameInput, 'Jazz Nights')
+const createBtn = [...window.document.querySelectorAll('button')].find((b) => b.textContent === 'Create library')
+if (!createBtn) throw new Error('Could not find the "Create library" submit button')
+createBtn.click()
+await new Promise((r) => setTimeout(r, 100))
+const afterCreateHtml = window.document.getElementById('root').innerHTML
+checks.push(
+  ['library form: modal closes after creating', !window.document.querySelector('.modal-backdrop')],
+  ['library form: navigates into the new library', afterCreateHtml.includes('0 of 0 albums')],
+  ['library form: new library appears in the sidebar', afterCreateHtml.includes('Jazz Nights')],
 )
 
 let failed = false
