@@ -59,7 +59,11 @@ export function HomeView({ libraries, onOpenLibrary, onNewLibrary }: HomeViewPro
             </button>
           )
         })}
-        <button className="lib-card-new" style={{ animationDelay: `${libraries.length * 60}ms` }} onClick={onNewLibrary}>
+        <button
+          className="lib-card-new"
+          style={{ animationDelay: `${libraries.length * 60}ms` }}
+          onClick={onNewLibrary}
+        >
           <span>
             <span className="plus">＋</span>Create a library
           </span>

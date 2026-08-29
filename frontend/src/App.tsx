@@ -46,7 +46,9 @@ export default function App() {
         onNavigate={navigate}
         onNewLibrary={comingSoon}
         spotifyConnected={spotifyConnected}
-        onSpotifyClick={() => (spotifyConnected ? disconnectSpotify() : (location.href = SPOTIFY_CONNECT_URL))}
+        onSpotifyClick={() =>
+          spotifyConnected ? disconnectSpotify() : (location.href = SPOTIFY_CONNECT_URL)
+        }
       />
       <main className="main">
         <button className="menu-btn" aria-label="Toggle menu" onClick={() => setSidebarOpen((v) => !v)}>
@@ -54,7 +56,11 @@ export default function App() {
         </button>
         <div id="view">
           {route.view === 'home' && (
-            <HomeView libraries={state.libraries} onOpenLibrary={(id) => navigate('library', id)} onNewLibrary={comingSoon} />
+            <HomeView
+              libraries={state.libraries}
+              onOpenLibrary={(id) => navigate('library', id)}
+              onNewLibrary={comingSoon}
+            />
           )}
           {route.view === 'favorites' && (
             <div className="view">
@@ -77,7 +83,13 @@ export default function App() {
                   <h1>
                     <span
                       className="lib-dot"
-                      style={{ background: activeLibrary.color, display: 'inline-block', width: 14, height: 14, marginRight: 6 }}
+                      style={{
+                        background: activeLibrary.color,
+                        display: 'inline-block',
+                        width: 14,
+                        height: 14,
+                        marginRight: 6,
+                      }}
                     />
                     {activeLibrary.name}
                   </h1>

@@ -24,7 +24,12 @@ export const SPOTIFY_CONNECT_URL = `${VAULT_BASE}spotify/connect/`
 export const LOGOUT_URL = window.MV_LOGOUT_URL || '/accounts/logout/'
 
 export function getCookie(name: string): string {
-  return document.cookie.split('; ').find((row) => row.startsWith(`${name}=`))?.split('=')[1] ?? ''
+  return (
+    document.cookie
+      .split('; ')
+      .find((row) => row.startsWith(`${name}=`))
+      ?.split('=')[1] ?? ''
+  )
 }
 
 class ApiRequestError extends Error {}

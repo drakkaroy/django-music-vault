@@ -34,7 +34,10 @@ export function Sidebar({
       <button className={`nav-item ${view === 'home' ? 'active' : ''}`} onClick={() => onNavigate('home')}>
         <span className="nav-ico">⌂</span>Home
       </button>
-      <button className={`nav-item ${view === 'favorites' ? 'active' : ''}`} onClick={() => onNavigate('favorites')}>
+      <button
+        className={`nav-item ${view === 'favorites' ? 'active' : ''}`}
+        onClick={() => onNavigate('favorites')}
+      >
         <span className="nav-ico">♥</span>Favorites<span className="count">{favCount}</span>
       </button>
       <div className="nav-section">Libraries</div>
@@ -46,7 +49,9 @@ export function Sidebar({
             onClick={() => onNavigate('library', l.id)}
           >
             <span className="lib-dot" style={{ background: l.color }} />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.name}</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+              {l.name}
+            </span>
             <span className="count">{l.albums.length}</span>
           </button>
         ))}
@@ -58,7 +63,11 @@ export function Sidebar({
         <button
           className="foot-btn"
           onClick={onSpotifyClick}
-          title={spotifyConnected ? 'Disconnect your Spotify account' : 'Connect your Spotify account to enable playback'}
+          title={
+            spotifyConnected
+              ? 'Disconnect your Spotify account'
+              : 'Connect your Spotify account to enable playback'
+          }
         >
           {spotifyConnected ? '🎧 Disconnect Spotify' : '🎧 Connect Spotify'}
         </button>
