@@ -28,7 +28,7 @@ python manage.py runserver
 
 Open <http://localhost:8000/> and sign in. Without a `.env` it runs on SQLite; with `DB_ENGINE=postgresql` it uses Postgres (`DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT` variables).
 
-To enable playback (the ▶ Play button), add `http://localhost:8000/spotify/callback/` as a Redirect URI in your [Spotify Dashboard](https://developer.spotify.com/dashboard) app, then click "Connect Spotify" in the sidebar. Playback needs Spotify Premium and an already-open Spotify app on some device.
+To enable playback (the ▶ Play button), add a Redirect URI in your [Spotify Dashboard](https://developer.spotify.com/dashboard) app that matches **exactly** how you access the site — scheme, host, port and trailing slash all count (e.g. `http://127.0.0.1:8000/spotify/callback/` if that's the URL in your browser; add `http://localhost:8000/spotify/callback/` too if you use both). A mismatch here is what causes Spotify's "redirect_uri: Not matching configuration" error. Then click "Connect Spotify" in the sidebar. Playback needs Spotify Premium and an already-open Spotify app on some device.
 
 ## Usage as a package in another project
 
