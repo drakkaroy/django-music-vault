@@ -5,6 +5,8 @@
 ```
 music_vault/     the installable, reusable package (pyproject.toml)
 project/         thin host project — only exists so this repo runs standalone
+frontend/        React/TypeScript rewrite's source (Node project, builds into
+                 music_vault/static/music_vault/react-app/) — see frontend.md
 manage.py
 ```
 

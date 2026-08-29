@@ -1,0 +1,17 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VinylVault — Your Music Libraries</title>
+<link rel="stylesheet" href="{% static 'music_vault/react-app/app.css' %}">
+</head>
+<body>
+<div id="root"></div>
+<script>
+  window.MV_BASE = "{% url 'music_vault:vault' %}";
+  window.MV_LOGOUT_URL = "{{ logout_url }}";
+</script>
+<script type="module" src="{% static 'music_vault/react-app/app.js' %}"></script>
+</body>
+</html>

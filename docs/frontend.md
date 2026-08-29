@@ -58,3 +58,19 @@ Duration is entered/displayed as `m:ss` text and converted to/from milliseconds 
 ```
 
 Static, page-level elements (sidebar's export/import/logout/new-library/Spotify-connect buttons) are bound once here, outside `render()`, since they're not part of the regenerated `#view` HTML.
+
+## React rewrite (in progress)
+
+The vanilla frontend above is being ported to React + TypeScript, built with Vite. This section covers the new setup; everything above still describes the source of truth until the migration reaches feature parity.
+
+**Where it lives**: `frontend/` at the repo root — a separate Node/TypeScript project, sibling to `music_vault/` and `project/`, *not* part of the installable Python package. See [frontend/README.md](../frontend/README.md) for dev commands.
+
+**Stack, deliberately minimal** (matching this project's "Django + requests only" dependency discipline on the Python side): React + TypeScript via Vite. Styling is **plain CSS with the same custom properties the original `styles.css`/`spotify.css` already used** — no Tailwind, no CSS-in-JS, no CSS Modules; `frontend/src/styles/` is those two files copied verbatim so components can reuse the exact same class names. No React Router (routing is a `useState`-held `{view, libId}`, same as the vanilla app's `route` — there's no History API integration in either version) and no state-management library (a single `VaultContext`/`useVault()` — plain `createContext`/hooks, not a new dependency — holds `state`, `spotifyConnected`, and toasts).
+
+**Build → Django integration**: `vite build` outputs straight into `music_vault/static/music_vault/react-app/` with **fixed, unhashed filenames** (`app.js`, `app.css` — configured via `rollupOptions.output` in `vite.config.ts`), no manifest file, no `django-vite`-style dependency to read one. That output **is committed to git** — installing the package via `pip` never needs Node; only developing the frontend does. Two globals the Django template injects (mirroring `MV_BASE` in the vanilla version) tell the app what it's running against: `window.MV_BASE` and `window.MV_LOGOUT_URL` (the latter because the login/logout URLs live in the *host project's* urlconf, not `music_vault`'s own namespace — see [integration.md](integration.md#4-auth--wire-up-login-styling-comes-for-free) — so the app can't safely assume a path for it).
+
+**Served in parallel, not a replacement yet**: `music_vault:vault-react` (`/react/` in the standalone project, `views.vault_react`) renders `vinylvault_react.html` alongside the existing `vault` view/template — both work at once. The plan is to keep building out the React version behind this second route until it has full feature parity, then make it the default and retire the vanilla one; there's no toggle or feature flag, just two URLs.
+
+**Verification without a browser**: this environment has no real browser available (the Claude-in-Chrome extension isn't connected here), so `tsc -b` + a successful `vite build` are necessary but not sufficient proof the app actually works. `frontend/scripts/smoke.mjs` (`npm run smoke`) mounts the *actual built* `app.js` in `jsdom` against mocked `fetch` responses and asserts real rendered output (sidebar counts, view headings, etc.) — run it after every build. It's not a substitute for real browser testing; treat any UI change as unverified visually until someone checks it in an actual browser.
+
+**Status**: scaffolding + build pipeline + API types (`src/types/api.ts`, mirroring [backend.md#json-contract](backend.md#json-contract)) + typed API client (`src/api/client.ts`) + `VaultProvider`/`useVault` + `Sidebar` + a working `HomeView`. Not yet ported: the library view (filters, album grid), favorites view, and every modal (album form with tag/track editors, library form, Spotify search, album detail, tracklist). Those show a "coming in the next pass" placeholder for now.

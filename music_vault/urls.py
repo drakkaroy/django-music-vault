@@ -6,6 +6,9 @@ app_name = "music_vault"
 
 urlpatterns = [
     path("", views.vault, name="vault"),
+    # React/TypeScript rewrite, in progress alongside the original vanilla
+    # frontend above — see docs/frontend.md#react-rewrite-in-progress.
+    path("react/", views.vault_react, name="vault-react"),
     path("api/state/", views.StateView.as_view(), name="api-state"),
     path("api/libraries/", views.LibraryListView.as_view(), name="api-libraries"),
     path("api/libraries/<int:pk>/", views.LibraryDetailView.as_view(), name="api-library"),
