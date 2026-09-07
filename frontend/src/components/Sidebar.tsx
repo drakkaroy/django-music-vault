@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { getCookie, LOGOUT_URL } from '../api/client'
 import type { View } from '../App'
 import type { Library } from '../types/api'
+import { NowPlayingCard } from './NowPlayingCard'
 import { FootButton, LibDot, NavItem } from './ui'
 
 interface SidebarProps {
@@ -64,6 +65,7 @@ export function Sidebar({
         ))}
       </div>
       <NavItem icon="＋" label="New library" style={{ color: 'var(--accent)' }} onClick={onNewLibrary} />
+      <NowPlayingCard connected={spotifyConnected} />
       <div className="sidebar-foot">
         <FootButton
           onClick={onSpotifyClick}

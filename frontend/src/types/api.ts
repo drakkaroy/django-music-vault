@@ -94,6 +94,14 @@ export interface SpotifyStatus {
   connected: boolean
 }
 
+export interface NowPlaying {
+  playing: boolean
+  track?: string
+  artist?: string
+  albumImage?: string
+  deviceName?: string
+}
+
 export interface ApiError {
   error: string
   code?: string

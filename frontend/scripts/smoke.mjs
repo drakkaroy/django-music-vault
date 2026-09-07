@@ -67,6 +67,11 @@ window.fetch = async (url, options = {}) => {
   const method = options.method || 'GET'
   if (path.includes('/api/state/')) return json(fakeState)
   if (path.includes('/api/spotify/status/')) return json({ connected: false })
+  if (path.includes('/api/spotify/now-playing/')) {
+    // Should never actually be hit — spotifyConnected is false in this
+    // fixture, and NowPlayingCard doesn't poll while disconnected.
+    return json({ playing: true, track: 'Should not render', artist: 'Nobody', deviceName: 'Nowhere' })
+  }
   if (path.includes('/api/spotify/search/')) {
     return json({
       results: [
@@ -210,6 +215,7 @@ const checks = [
   ['renders the mocked library name', html.includes('Rock')],
   ['renders the correct library/album counts', html.includes('1 libraries') && html.includes('1 albums')],
   ['shows the Spotify connect button', html.includes('Connect Spotify')],
+  ['now-playing card stays hidden while Spotify is disconnected', !html.includes('now-playing')],
 ]
 
 function clickButtonContaining(text) {

@@ -49,6 +49,15 @@ class PlayerClient:
         response.raise_for_status()
         return response.json().get("devices", [])
 
+    def currently_playing(self) -> dict | None:
+        """Raw "Get Playback State" response, or None when Spotify has
+        nothing to report (no active device, or nothing loaded)."""
+        response = requests.get(f"{API_BASE}/me/player", headers=self._headers(), timeout=10)
+        if response.status_code == 204 or not response.content:
+            return None
+        response.raise_for_status()
+        return response.json()
+
     def play(self, context_uri: str, offset_uri: str | None = None) -> None:
         body = {"context_uri": context_uri}
         if offset_uri:
