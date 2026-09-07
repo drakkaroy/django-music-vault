@@ -29,6 +29,7 @@ export interface Album {
   tags: string[]
   tracks: Track[]
   favorite: boolean
+  rating: number
   addedAt: number
 }
 
@@ -56,6 +57,7 @@ export interface AlbumPayload {
   spotifyUri?: string
   tags?: string[]
   tracks?: Track[]
+  rating?: number
   downloadCover?: boolean
 }
 

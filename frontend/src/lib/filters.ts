@@ -1,6 +1,6 @@
 import type { Album } from '../types/api'
 
-export type SortKey = 'artist' | 'year-asc' | 'year-desc' | 'title' | 'recent'
+export type SortKey = 'artist' | 'year-asc' | 'year-desc' | 'title' | 'recent' | 'rating-desc'
 
 export interface Filters {
   q: string
@@ -43,6 +43,7 @@ const SORTERS: Record<SortKey, (a: Album, b: Album) => number> = {
   'year-desc': (a, b) => b.year - a.year,
   title: (a, b) => a.title.localeCompare(b.title),
   recent: (a, b) => b.addedAt - a.addedAt,
+  'rating-desc': (a, b) => b.rating - a.rating || a.artist.localeCompare(b.artist),
 }
 
 export function sortAlbums(albums: Album[], sort: SortKey): Album[] {

@@ -48,6 +48,7 @@ const fakeState = {
           tags: ['90s'],
           tracks: [{ trackNumber: 1, title: 'Airbag', durationMs: 284000, spotifyUri: '' }],
           favorite: true,
+          rating: 5,
           addedAt: Date.now(),
         },
       ],
@@ -148,6 +149,7 @@ window.fetch = async (url, options = {}) => {
         spotifyUri: t.spotifyUri || '',
       })),
       favorite: false,
+      rating: body.rating || 0,
       addedAt: Date.now(),
     }
     library.albums.push(created)
@@ -175,6 +177,7 @@ window.fetch = async (url, options = {}) => {
         tags: a.tags || [],
         tracks: a.tracks || [],
         favorite: Boolean(a.favorite),
+        rating: a.rating || 0,
         addedAt: Date.now(),
       })),
     }))
@@ -271,6 +274,7 @@ checks.push(
     'album detail: shows Play/Tracklist/Favorite/Edit/Delete actions',
     ['Play on Spotify', 'Tracklist', 'Unfavorite', 'Edit', 'Delete'].every((s) => detailHtml.includes(s)),
   ],
+  ['album detail: shows its 5-star rating', detailHtml.includes('5 out of 5 stars')],
 )
 
 clickButtonContaining('Tracklist')
@@ -354,6 +358,11 @@ clickButtonContaining('+ Add track')
 await new Promise((r) => setTimeout(r, 20))
 setInputValue(window.document.querySelector('.tr-title'), 'One More Time')
 
+const fourthStar = window.document.querySelector('[aria-label="Rate 4 stars"]')
+if (!fourthStar) throw new Error('Rating star button not found in the album form')
+fourthStar.click()
+await new Promise((r) => setTimeout(r, 20))
+
 const addAlbumSubmit = [...window.document.querySelectorAll('button')].find((b) => b.textContent === 'Add album')
 if (!addAlbumSubmit) throw new Error('Could not find the "Add album" submit button')
 addAlbumSubmit.click()
@@ -366,6 +375,7 @@ checks.push(
   ['album form: result count updates', afterAlbumHtml.includes('1 of 1 albums')],
   ['album form: tag was included in the actual POST payload', lastAlbumCreatePayload?.tags?.includes('dance')],
   ['album form: track was included in the actual POST payload', lastAlbumCreatePayload?.tracks?.[0]?.title === 'One More Time'],
+  ['album form: rating was included in the actual POST payload', lastAlbumCreatePayload?.rating === 4],
 )
 
 // Import an album from Spotify search into "Rock" (not "Jazz Nights", which

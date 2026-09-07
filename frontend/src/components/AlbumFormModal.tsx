@@ -4,7 +4,7 @@ import { useVault } from '../context/VaultContext'
 import type { Album, AlbumPayload, SpotifySearchResult, Track } from '../types/api'
 import { TagEditor } from './TagEditor'
 import { TrackEditor } from './TrackEditor'
-import { Button, Modal } from './ui'
+import { Button, Modal, StarRating } from './ui'
 
 interface AlbumFormModalProps {
   libraryId: string
@@ -52,6 +52,7 @@ export function AlbumFormModal({ libraryId, libraryName, album, spotify, onClose
   const [cover, setCover] = useState(album?.cover ?? spotify?.cover_url ?? '')
   const [spotifyUri, setSpotifyUri] = useState(album?.spotifyUri ?? spotify?.spotify_uri ?? '')
   const [tags, setTags] = useState<string[]>(album?.tags ?? [])
+  const [rating, setRating] = useState(album?.rating ?? 0)
   const [tracks, setTracks] = useState<Track[]>(initialTracks(album, spotify))
 
   const handleSubmit = async (e: FormEvent) => {
@@ -67,6 +68,7 @@ export function AlbumFormModal({ libraryId, libraryName, album, spotify, onClose
       spotifyUri,
       tags,
       tracks: tracks.filter((t) => t.title.trim()),
+      rating,
       downloadCover: Boolean(spotify),
     }
     try {
@@ -164,6 +166,10 @@ export function AlbumFormModal({ libraryId, libraryName, album, spotify, onClose
               placeholder="optional"
             />
           </div>
+        </div>
+        <div className="field">
+          <label>Rating</label>
+          <StarRating value={rating} onChange={setRating} />
         </div>
         <div className="field">
           <label>

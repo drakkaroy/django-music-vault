@@ -17,6 +17,7 @@ const SORT_OPTIONS: Array<[SortKey, string]> = [
   ['year-desc', 'Year ↓'],
   ['title', 'Title A–Z'],
   ['recent', 'Recently added'],
+  ['rating-desc', 'Highest rated'],
 ]
 
 export function Toolbar({ albums, filters, onChange }: ToolbarProps) {
