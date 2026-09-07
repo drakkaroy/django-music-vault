@@ -3,9 +3,13 @@ import { useRef, useState } from 'react'
 interface TagEditorProps {
   tags: string[]
   onChange: (tags: string[]) => void
+  /** Existing tags from across the collection, offered as autocomplete
+   * suggestions while typing — so you don't create "Rock" and "rock" as
+   * two different tags without noticing. */
+  suggestions?: string[]
 }
 
-export function TagEditor({ tags, onChange }: TagEditorProps) {
+export function TagEditor({ tags, onChange, suggestions = [] }: TagEditorProps) {
   const [draft, setDraft] = useState('')
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -37,6 +41,7 @@ export function TagEditor({ tags, onChange }: TagEditorProps) {
         value={draft}
         placeholder="add a tag…"
         aria-label="Add tag"
+        list="tag-suggestions"
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={(e) => {
           if ((e.key === 'Enter' || e.key === ',') && draft.trim()) {
@@ -47,6 +52,13 @@ export function TagEditor({ tags, onChange }: TagEditorProps) {
           }
         }}
       />
+      <datalist id="tag-suggestions">
+        {suggestions
+          .filter((s) => !tags.includes(s))
+          .map((s) => (
+            <option key={s} value={s} />
+          ))}
+      </datalist>
     </div>
   )
 }

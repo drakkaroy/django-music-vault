@@ -55,6 +55,7 @@ class AuthTests(ApiTestCase):
         response = self.client.get(reverse("music_vault:vault"))
         self.assertContains(response, "react-app/app.js")
         self.assertContains(response, "MV_LOGOUT_URL")
+        self.assertContains(response, "Music Vault")
 
     def test_vault_legacy_page_redirects_anonymous_to_login(self):
         self.client.logout()
@@ -65,6 +66,7 @@ class AuthTests(ApiTestCase):
     def test_vault_legacy_page_renders_for_user(self):
         response = self.client.get(reverse("music_vault:vault-legacy"))
         self.assertContains(response, "music_vault/script.js")
+        self.assertContains(response, "Music Vault")
 
 
 class StateTests(ApiTestCase):
@@ -517,6 +519,57 @@ class AlbumPlayTests(ApiTestCase):
         player_client_cls.return_value.play.assert_called_once_with(
             "spotify:album:abc123", offset_uri=None
         )
+
+
+class NowPlayingTests(ApiTestCase):
+    def test_not_playing_without_connected_account(self):
+        response = self.client.get(reverse("music_vault:api-spotify-now-playing"))
+        self.assertFalse(response.json()["playing"])
+
+    @mock.patch("music_vault.views.PlayerClient")
+    def test_not_playing_when_nothing_active(self, player_client_cls):
+        SpotifyAccount.objects.create(user=self.user, access_token="a", refresh_token="r", expires_at=0)
+        player_client_cls.return_value.currently_playing.return_value = None
+        response = self.client.get(reverse("music_vault:api-spotify-now-playing"))
+        self.assertFalse(response.json()["playing"])
+
+    @mock.patch("music_vault.views.PlayerClient")
+    def test_not_playing_on_spotify_request_failure(self, player_client_cls):
+        SpotifyAccount.objects.create(user=self.user, access_token="a", refresh_token="r", expires_at=0)
+        player_client_cls.return_value.currently_playing.side_effect = requests.RequestException()
+        response = self.client.get(reverse("music_vault:api-spotify-now-playing"))
+        self.assertFalse(response.json()["playing"])
+
+    @mock.patch("music_vault.views.PlayerClient")
+    def test_reports_currently_playing_track(self, player_client_cls):
+        SpotifyAccount.objects.create(user=self.user, access_token="a", refresh_token="r", expires_at=0)
+        player_client_cls.return_value.currently_playing.return_value = {
+            "is_playing": True,
+            "device": {"name": "Kitchen speaker"},
+            "item": {
+                "name": "Aerodynamic",
+                "artists": [{"name": "Daft Punk"}],
+                "album": {"images": [{"url": "big.jpg"}, {"url": "small.jpg"}]},
+            },
+        }
+        response = self.client.get(reverse("music_vault:api-spotify-now-playing"))
+        data = response.json()
+        self.assertTrue(data["playing"])
+        self.assertEqual(data["track"], "Aerodynamic")
+        self.assertEqual(data["artist"], "Daft Punk")
+        self.assertEqual(data["albumImage"], "small.jpg")
+        self.assertEqual(data["deviceName"], "Kitchen speaker")
+
+    @mock.patch("music_vault.views.PlayerClient")
+    def test_reports_paused_as_not_playing(self, player_client_cls):
+        SpotifyAccount.objects.create(user=self.user, access_token="a", refresh_token="r", expires_at=0)
+        player_client_cls.return_value.currently_playing.return_value = {
+            "is_playing": False,
+            "device": {"name": "Kitchen speaker"},
+            "item": {"name": "Aerodynamic", "artists": [{"name": "Daft Punk"}], "album": {"images": []}},
+        }
+        response = self.client.get(reverse("music_vault:api-spotify-now-playing"))
+        self.assertFalse(response.json()["playing"])
 
 
 class SpotifyTests(ApiTestCase):

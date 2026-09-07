@@ -290,6 +290,34 @@ class SpotifyDisconnectView(ApiView):
         return JsonResponse({"connected": False})
 
 
+class SpotifyNowPlayingView(ApiView):
+    """Polled by the sidebar's now-playing card — best effort, never errors
+    the UI: any failure to reach Spotify just means nothing to show."""
+
+    def get(self, request):
+        try:
+            account = SpotifyAccount.objects.get(user=request.user)
+        except SpotifyAccount.DoesNotExist:
+            return JsonResponse({"playing": False})
+        try:
+            data = PlayerClient(account).currently_playing()
+        except requests.RequestException:
+            return JsonResponse({"playing": False})
+        item = (data or {}).get("item")
+        if not item:
+            return JsonResponse({"playing": False})
+        images = item.get("album", {}).get("images") or []
+        return JsonResponse(
+            {
+                "playing": bool(data.get("is_playing")),
+                "track": item.get("name", ""),
+                "artist": ", ".join(a["name"] for a in item.get("artists", [])),
+                "albumImage": images[-1]["url"] if images else "",
+                "deviceName": (data.get("device") or {}).get("name", ""),
+            }
+        )
+
+
 class AlbumPlayView(ApiView):
     def post(self, request, pk):
         album = self.get_album(request, pk)

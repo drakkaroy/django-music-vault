@@ -67,6 +67,11 @@ window.fetch = async (url, options = {}) => {
   const method = options.method || 'GET'
   if (path.includes('/api/state/')) return json(fakeState)
   if (path.includes('/api/spotify/status/')) return json({ connected: false })
+  if (path.includes('/api/spotify/now-playing/')) {
+    // Should never actually be hit — spotifyConnected is false in this
+    // fixture, and NowPlayingCard doesn't poll while disconnected.
+    return json({ playing: true, track: 'Should not render', artist: 'Nobody', deviceName: 'Nowhere' })
+  }
   if (path.includes('/api/spotify/search/')) {
     return json({
       results: [
@@ -205,11 +210,12 @@ const html = window.document.getElementById('root').innerHTML
 
 const checks = [
   ['renders something into #root', html.length > 0],
-  ['shows the VinylVault brand', html.includes('VinylVault')],
+  ['shows the Music Vault brand', html.includes('Music Vault')],
   ['shows the Home view heading', html.includes('Your Libraries')],
   ['renders the mocked library name', html.includes('Rock')],
   ['renders the correct library/album counts', html.includes('1 libraries') && html.includes('1 albums')],
   ['shows the Spotify connect button', html.includes('Connect Spotify')],
+  ['now-playing card stays hidden while Spotify is disconnected', !html.includes('now-playing')],
 ]
 
 function clickButtonContaining(text) {
@@ -332,7 +338,14 @@ setInputValue(window.document.querySelector('#f-artist'), 'Daft Punk')
 setInputValue(window.document.querySelector('#f-genre'), 'Electronic')
 setInputValue(window.document.querySelector('#f-country'), 'France')
 
+// Tag suggestions come from tags across the whole collection, not just
+// this library — "90s" only exists on "Rock"'s "OK Computer" album, and
+// we're adding to the just-created "Jazz Nights" library.
 const tagInput = window.document.querySelector('[aria-label="Add tag"]')
+checks.push([
+  'tag editor: suggests an existing tag from another library',
+  Boolean(window.document.querySelector('#tag-suggestions option[value="90s"]')),
+])
 setInputValue(tagInput, 'dance')
 tagInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
 await new Promise((r) => setTimeout(r, 20))

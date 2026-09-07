@@ -43,6 +43,7 @@ All under wherever `music_vault.urls` is mounted (`/` in the standalone project)
 | GET | `api/spotify/albums/<spotify_id>/` | normalized detail |
 | GET | `api/spotify/status/` | `{connected: bool}` |
 | POST | `api/spotify/disconnect/` | removes the user's `SpotifyAccount` |
+| GET | `api/spotify/now-playing/` | `{playing: bool, track?, artist?, albumImage?, deviceName?}` — see below |
 | POST | `api/albums/<id>/play/` | Spotify Connect playback; optional `{trackUri}` jumps to that track within the album's context |
 | GET | `spotify/connect/` | redirect into Spotify's consent screen (not JSON) |
 | GET | `spotify/callback/` | OAuth redirect target (not JSON) |
@@ -88,3 +89,5 @@ Per-user OAuth, needed because starting playback requires acting *as* a specific
 - `SpotifyAccount.access_token`/`refresh_token` are stored **in plaintext**. Deliberate for this self-hosted, single-tenant-per-deployment app — see [configuration.md](configuration.md) before changing this if the deployment model ever changes (multi-tenant, exposed beyond trusted users).
 
 Setting up the redirect URI correctly in the Spotify Dashboard is the single most common source of playback-connect failures — see [configuration.md](configuration.md#spotify-dashboard-setup).
+
+`PlayerClient.currently_playing()` wraps "Get Playback State" (`GET /me/player`), used by `api/spotify/now-playing/` (`SpotifyNowPlayingView`) to feed the React sidebar's now-playing card — see [frontend.md](frontend.md#react-rewrite). It returns `None` on Spotify's 204 (nothing to report); the view treats *any* failure (no linked account, no active device, a request exception) the same way, as `{"playing": false}` — this endpoint is polled every few seconds, so it must never surface an error to the UI, just silently report nothing. A response with `is_playing: false` (e.g. paused) is also reported as `playing: false` to the frontend — the card is meant to reflect active playback, not track a paused session. `albumImage` uses the *smallest* of Spotify's provided image sizes (`images[-1]`, since the API orders them largest-first) since it's only ever shown as a small thumbnail.

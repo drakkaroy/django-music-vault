@@ -3,6 +3,7 @@ import type {
   AlbumPayload,
   Library,
   LibraryPayload,
+  NowPlaying,
   SpotifySearchResult,
   SpotifyStatus,
   VaultState,
@@ -83,3 +84,4 @@ export const spotifyAlbumDetail = (spotifyId: string) =>
   api<SpotifySearchResult>(`spotify/albums/${encodeURIComponent(spotifyId)}/`)
 export const spotifyStatus = () => api<SpotifyStatus>('spotify/status/')
 export const spotifyDisconnect = () => api<SpotifyStatus>('spotify/disconnect/', 'POST')
+export const spotifyNowPlaying = () => api<NowPlaying>('spotify/now-playing/')

@@ -20,6 +20,7 @@ urlpatterns = [
     path("api/spotify/albums/<str:spotify_id>/", views.SpotifyAlbumView.as_view(), name="api-spotify-album"),
     path("api/spotify/status/", views.SpotifyStatusView.as_view(), name="api-spotify-status"),
     path("api/spotify/disconnect/", views.SpotifyDisconnectView.as_view(), name="api-spotify-disconnect"),
+    path("api/spotify/now-playing/", views.SpotifyNowPlayingView.as_view(), name="api-spotify-now-playing"),
     path("api/albums/<int:pk>/play/", views.AlbumPlayView.as_view(), name="api-album-play"),
     # Real browser redirects (OAuth), not JSON — kept outside api/
     path("spotify/connect/", views.spotify_connect, name="spotify-connect"),
