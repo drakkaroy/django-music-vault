@@ -1,6 +1,8 @@
+import { useState } from 'react'
 import { sortAlbums } from '../lib/filters'
 import type { Album, Library } from '../types/api'
 import { AlbumGrid } from './AlbumGrid'
+import { ViewToggle, type ViewMode } from './ui'
 
 interface FavoritesViewProps {
   libraries: Library[]
@@ -10,6 +12,7 @@ interface FavoritesViewProps {
 }
 
 export function FavoritesView({ libraries, onOpenAlbum, onPlayAlbum, onToggleFavorite }: FavoritesViewProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>('detailed')
   const favorites = sortAlbums(
     libraries.flatMap((l) => l.albums.filter((a) => a.favorite)),
     'artist',
@@ -26,14 +29,20 @@ export function FavoritesView({ libraries, onOpenAlbum, onPlayAlbum, onToggleFav
         </div>
       </div>
       {favorites.length ? (
-        <AlbumGrid
-          albums={favorites}
-          sort="artist"
-          libraryNameFor={libraryNameFor}
-          onOpen={onOpenAlbum}
-          onPlay={onPlayAlbum}
-          onToggleFavorite={onToggleFavorite}
-        />
+        <>
+          <div className="grid-bar grid-bar-end">
+            <ViewToggle value={viewMode} onChange={setViewMode} />
+          </div>
+          <AlbumGrid
+            albums={favorites}
+            sort="artist"
+            viewMode={viewMode}
+            libraryNameFor={libraryNameFor}
+            onOpen={onOpenAlbum}
+            onPlay={onPlayAlbum}
+            onToggleFavorite={onToggleFavorite}
+          />
+        </>
       ) : (
         <div className="empty-state">
           <div className="big">♡</div>

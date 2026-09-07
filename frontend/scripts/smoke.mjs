@@ -230,6 +230,29 @@ checks.push(
   ['library view: shows the result count', libraryHtml.includes('1 of 1 albums')],
 )
 
+// Covers view: toggle from the library's view-toggle control — meta text
+// (title/artist/year/genre) disappears, but the cover image and the
+// aria-labelled play/favorite hover controls stay in the DOM.
+const coversToggleBtn = window.document.querySelector('[aria-label="Covers only view"]')
+if (!coversToggleBtn) throw new Error('Covers view toggle button not found')
+coversToggleBtn.click()
+await new Promise((r) => setTimeout(r, 30))
+const coversHtml = window.document.getElementById('root').innerHTML
+checks.push(
+  // "Alt Rock" alone also appears in the toolbar's genre filter <option>,
+  // so check the meta line's distinctive "year · genre" combo instead.
+  ['covers view: hides album meta text', !coversHtml.includes('1997 · Alt Rock')],
+  ['covers view: keeps the cover image', coversHtml.includes('Cover of OK Computer')],
+  [
+    'covers view: keeps play/favorite hover controls',
+    coversHtml.includes('Play OK Computer on Spotify') && coversHtml.includes('Remove from favorites'),
+  ],
+)
+// Switch back to detailed for the rest of the scenarios below, which check
+// title/artist text rendered on the cards.
+window.document.querySelector('[aria-label="Detailed view"]').click()
+await new Promise((r) => setTimeout(r, 30))
+
 // Open the album's detail modal (real click on the card) and its tracklist.
 const albumCard = window.document.querySelector('[aria-label="OK Computer by Radiohead"]')
 if (!albumCard) throw new Error('Album card not found (aria-label mismatch?)')
