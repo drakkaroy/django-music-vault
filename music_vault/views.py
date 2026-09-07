@@ -28,14 +28,15 @@ from .spotify.service import get_service
 @login_required
 @ensure_csrf_cookie
 def vault(request):
+    """The original vanilla HTML/CSS/JS frontend — kept at /legacy/ for
+    reference/rollback now that `vault_react` is the default. See docs/frontend.md."""
     return render(request, "music_vault/vinylvault.html")
 
 
 @login_required
 @ensure_csrf_cookie
 def vault_react(request):
-    """The React/TypeScript rewrite — served alongside `vault` while it's
-    built out feature-by-feature. See docs/frontend.md."""
+    """The React/TypeScript rewrite — the default UI. See docs/frontend.md."""
     return render(request, "music_vault/vinylvault_react.html", {
         "logout_url": reverse("logout"),
     })
