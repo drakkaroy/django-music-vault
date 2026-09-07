@@ -8,15 +8,26 @@ interface AlbumCardProps {
   /** Staggered entrance animation, matching the vanilla grid's `i * 40ms,
    * capped at 400ms` — purely cosmetic, pass the card's position in the grid. */
   index?: number
+  /** Covers view: just the artwork, no title/artist/year below it — hover
+   * still reveals play/favorite the same as the detailed view. */
+  coversOnly?: boolean
   onOpen: () => void
   onPlay: () => void
   onToggleFavorite: () => void
 }
 
-export function AlbumCard({ album, libraryName, index, onOpen, onPlay, onToggleFavorite }: AlbumCardProps) {
+export function AlbumCard({
+  album,
+  libraryName,
+  index,
+  coversOnly,
+  onOpen,
+  onPlay,
+  onToggleFavorite,
+}: AlbumCardProps) {
   return (
     <div
-      className="album-card"
+      className={`album-card${coversOnly ? ' covers-only' : ''}`}
       style={index !== undefined ? { animationDelay: `${Math.min(index * 40, 400)}ms` } : undefined}
       tabIndex={0}
       role="button"
@@ -45,14 +56,16 @@ export function AlbumCard({ album, libraryName, index, onOpen, onPlay, onToggleF
           />
         </div>
       </div>
-      <div className="album-meta">
-        <div className="t">{album.title}</div>
-        <div className="a">{album.artist}</div>
-        <div className="y">
-          {album.year} · {album.genre}
-          {libraryName ? ` · ${libraryName}` : ''}
+      {!coversOnly && (
+        <div className="album-meta">
+          <div className="t">{album.title}</div>
+          <div className="a">{album.artist}</div>
+          <div className="y">
+            {album.year} · {album.genre}
+            {libraryName ? ` · ${libraryName}` : ''}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

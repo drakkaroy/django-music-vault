@@ -3,7 +3,7 @@ import { applyFilters, emptyFilters, sortAlbums, type Filters } from '../lib/fil
 import type { Album, Library } from '../types/api'
 import { AlbumGrid } from './AlbumGrid'
 import { Toolbar } from './Toolbar'
-import { BackLink, Button, IconButton, LibDot } from './ui'
+import { BackLink, Button, IconButton, LibDot, ViewToggle, type ViewMode } from './ui'
 
 interface LibraryViewProps {
   library: Library
@@ -30,6 +30,7 @@ export function LibraryView({
   // ported yet — this resets when you navigate away and back. Small,
   // deliberate simplification for now.
   const [filters, setFilters] = useState<Filters>(emptyFilters())
+  const [viewMode, setViewMode] = useState<ViewMode>('detailed')
   const filtered = sortAlbums(applyFilters(library.albums, filters), filters.sort)
 
   return (
@@ -56,12 +57,16 @@ export function LibraryView({
         </div>
       </div>
       <Toolbar albums={library.albums} filters={filters} onChange={setFilters} />
-      <p className="result-count">
-        {filtered.length} of {library.albums.length} albums
-      </p>
+      <div className="grid-bar">
+        <p className="result-count">
+          {filtered.length} of {library.albums.length} albums
+        </p>
+        <ViewToggle value={viewMode} onChange={setViewMode} />
+      </div>
       <AlbumGrid
         albums={filtered}
         sort={filters.sort}
+        viewMode={viewMode}
         onOpen={onOpenAlbum}
         onPlay={onPlayAlbum}
         onToggleFavorite={onToggleFavorite}

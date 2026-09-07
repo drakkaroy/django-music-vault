@@ -1,10 +1,14 @@
 import { groupByArtist, type SortKey } from '../lib/filters'
 import type { Album } from '../types/api'
+import type { ViewMode } from './ui'
 import { AlbumCard } from './AlbumCard'
 
 interface AlbumGridProps {
   albums: Album[]
   sort: SortKey
+  /** 'covers' flattens the grid (no artist sections) and shows just artwork —
+   * see AlbumCard's coversOnly prop. Defaults to the existing detailed view. */
+  viewMode?: ViewMode
   /** Favorites view shows which library each album belongs to; the library
    * view doesn't need to (you're already inside one). */
   libraryNameFor?: (album: Album) => string
@@ -16,6 +20,7 @@ interface AlbumGridProps {
 export function AlbumGrid({
   albums,
   sort,
+  viewMode = 'detailed',
   libraryNameFor,
   onOpen,
   onPlay,
@@ -31,11 +36,14 @@ export function AlbumGrid({
     )
   }
 
+  const covers = viewMode === 'covers'
+
   const card = (album: Album, i: number) => (
     <AlbumCard
       key={album.id}
       album={album}
       index={i}
+      coversOnly={covers}
       libraryName={libraryNameFor?.(album)}
       onOpen={() => onOpen(album)}
       onPlay={() => onPlay(album)}
@@ -43,8 +51,10 @@ export function AlbumGrid({
     />
   )
 
-  if (sort !== 'artist') {
-    return <div className="album-grid">{albums.map((a, i) => card(a, i))}</div>
+  if (covers || sort !== 'artist') {
+    return (
+      <div className={`album-grid${covers ? ' covers-only' : ''}`}>{albums.map((a, i) => card(a, i))}</div>
+    )
   }
 
   let i = 0
