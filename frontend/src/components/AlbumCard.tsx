@@ -1,0 +1,58 @@
+import { coverOf } from '../lib/cover'
+import type { Album } from '../types/api'
+import { FavButton, PlayButton } from './ui'
+
+interface AlbumCardProps {
+  album: Album
+  libraryName?: string
+  /** Staggered entrance animation, matching the vanilla grid's `i * 40ms,
+   * capped at 400ms` — purely cosmetic, pass the card's position in the grid. */
+  index?: number
+  onOpen: () => void
+  onPlay: () => void
+  onToggleFavorite: () => void
+}
+
+export function AlbumCard({ album, libraryName, index, onOpen, onPlay, onToggleFavorite }: AlbumCardProps) {
+  return (
+    <div
+      className="album-card"
+      style={index !== undefined ? { animationDelay: `${Math.min(index * 40, 400)}ms` } : undefined}
+      tabIndex={0}
+      role="button"
+      aria-label={`${album.title} by ${album.artist}`}
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault()
+          onOpen()
+        }
+      }}
+    >
+      <div className="cover-wrap">
+        <img src={coverOf(album)} alt={`Cover of ${album.title}`} loading="lazy" />
+        {album.favorite && (
+          <span className="fav-corner" aria-hidden="true">
+            ♥
+          </span>
+        )}
+        <div className="cover-overlay">
+          <PlayButton label={`Play ${album.title} on Spotify`} onClick={onPlay} />
+          <FavButton
+            active={album.favorite}
+            label={album.favorite ? 'Remove from favorites' : 'Add to favorites'}
+            onClick={onToggleFavorite}
+          />
+        </div>
+      </div>
+      <div className="album-meta">
+        <div className="t">{album.title}</div>
+        <div className="a">{album.artist}</div>
+        <div className="y">
+          {album.year} · {album.genre}
+          {libraryName ? ` · ${libraryName}` : ''}
+        </div>
+      </div>
+    </div>
+  )
+}

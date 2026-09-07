@@ -31,6 +31,16 @@ def vault(request):
     return render(request, "music_vault/vinylvault.html")
 
 
+@login_required
+@ensure_csrf_cookie
+def vault_react(request):
+    """The React/TypeScript rewrite — served alongside `vault` while it's
+    built out feature-by-feature. See docs/frontend.md."""
+    return render(request, "music_vault/vinylvault_react.html", {
+        "logout_url": reverse("logout"),
+    })
+
+
 class ApiView(View):
     """Base for JSON endpoints: requires auth, parses JSON bodies."""
 
