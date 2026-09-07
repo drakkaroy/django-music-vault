@@ -52,6 +52,14 @@ LOGIN_REDIRECT_URL = "music_vault:vault"   # land here right after login
 
 **Already have a login flow, or want your own look?** Nothing to do — Django's template loader checks your project's own `TEMPLATES.DIRS` *before* any app's `templates/`, so a `registration/login.html` of your own is picked up automatically and ours is never seen. No setting to flip, no override mechanism to learn — just supply the template and it wins.
 
+**Logout, if you're not using `django.contrib.auth.urls`**: both frontends' sidebars log out via `reverse("logout")` by default — the URL name `django.contrib.auth.urls` registers. If your project handles auth some other way (most commonly [django-allauth](https://docs.allauth.org/), whose logout URL is named `account_logout`, not `logout`), that raises `NoReverseMatch` on `music_vault`'s pages even though your own login/logout works fine everywhere else. Set:
+
+```python
+MUSIC_VAULT_LOGOUT_URL = "/accounts/logout/"   # or reverse_lazy("account_logout"), etc.
+```
+
+and both frontends use that instead — no URL named `logout` required.
+
 ## 5. Migrate
 
 ```bash
@@ -87,6 +95,7 @@ See [configuration.md#separate-database-optional](configuration.md#separate-data
 - [ ] `INSTALLED_APPS` includes `music_vault` and `django.contrib.staticfiles`
 - [ ] `include("music_vault.urls")` somewhere in `urls.py`
 - [ ] `path("accounts/", include("django.contrib.auth.urls"))` (or equivalent) — the default login template ships with the package, but not the URL wiring
+- [ ] using a different auth app (django-allauth, etc.) instead? set `MUSIC_VAULT_LOGOUT_URL` (see step 4) or logout raises `NoReverseMatch`
 - [ ] `python manage.py migrate`
 - [ ] (optional) `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` for search
 - [ ] (optional) Spotify Dashboard Redirect URI matching your mount prefix, for playback

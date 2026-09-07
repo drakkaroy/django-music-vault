@@ -68,6 +68,23 @@ class AuthTests(ApiTestCase):
         self.assertContains(response, "music_vault/script.js")
         self.assertContains(response, "Music Vault")
 
+    def test_vault_page_uses_reverse_logout_by_default(self):
+        response = self.client.get(reverse("music_vault:vault"))
+        self.assertContains(response, reverse("logout"))
+
+    @override_settings(MUSIC_VAULT_LOGOUT_URL="/accounts/logout/")
+    def test_vault_page_honors_configured_logout_url(self):
+        """A host project without a URL named "logout" (e.g. django-allauth,
+        whose logout URL is named "account_logout") must be able to opt out
+        of the reverse("logout") default rather than hitting NoReverseMatch."""
+        response = self.client.get(reverse("music_vault:vault"))
+        self.assertContains(response, "/accounts/logout/")
+
+    @override_settings(MUSIC_VAULT_LOGOUT_URL="/accounts/logout/")
+    def test_vault_legacy_page_honors_configured_logout_url(self):
+        response = self.client.get(reverse("music_vault:vault-legacy"))
+        self.assertContains(response, "/accounts/logout/")
+
 
 class StateTests(ApiTestCase):
     def test_state_returns_only_own_libraries(self):
