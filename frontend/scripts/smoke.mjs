@@ -332,7 +332,14 @@ setInputValue(window.document.querySelector('#f-artist'), 'Daft Punk')
 setInputValue(window.document.querySelector('#f-genre'), 'Electronic')
 setInputValue(window.document.querySelector('#f-country'), 'France')
 
+// Tag suggestions come from tags across the whole collection, not just
+// this library — "90s" only exists on "Rock"'s "OK Computer" album, and
+// we're adding to the just-created "Jazz Nights" library.
 const tagInput = window.document.querySelector('[aria-label="Add tag"]')
+checks.push([
+  'tag editor: suggests an existing tag from another library',
+  Boolean(window.document.querySelector('#tag-suggestions option[value="90s"]')),
+])
 setInputValue(tagInput, 'dance')
 tagInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
 await new Promise((r) => setTimeout(r, 20))

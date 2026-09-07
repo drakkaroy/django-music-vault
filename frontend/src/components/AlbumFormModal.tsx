@@ -36,6 +36,7 @@ export function AlbumFormModal({ libraryId, libraryName, album, spotify, onClose
   const allAlbums = state.libraries.flatMap((l) => l.albums)
   const genreOptions = [...new Set(allAlbums.map((a) => a.genre))]
   const countryOptions = [...new Set(allAlbums.map((a) => a.country))]
+  const tagOptions = [...new Set(allAlbums.flatMap((a) => a.tags))].sort()
 
   const [title, setTitle] = useState(album?.title ?? spotify?.name ?? '')
   const [artist, setArtist] = useState(album?.artist ?? spotify?.artists.join(', ') ?? '')
@@ -169,7 +170,7 @@ export function AlbumFormModal({ libraryId, libraryName, album, spotify, onClose
             Tags{' '}
             <span style={{ textTransform: 'none', fontWeight: 400 }}>(unlimited — press Enter to add)</span>
           </label>
-          <TagEditor tags={tags} onChange={setTags} />
+          <TagEditor tags={tags} onChange={setTags} suggestions={tagOptions} />
         </div>
         <div className="field">
           <label>
