@@ -13,7 +13,7 @@ from django.core.exceptions import ImproperlyConfigured
 
 AUTHORIZE_URL = "https://accounts.spotify.com/authorize"
 TOKEN_URL = "https://accounts.spotify.com/api/token"
-SCOPES = "user-read-playback-state user-modify-playback-state"
+SCOPES = "user-read-playback-state user-modify-playback-state user-top-read"
 
 
 def _get_credentials() -> tuple[str, str]:

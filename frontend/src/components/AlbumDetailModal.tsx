@@ -1,8 +1,9 @@
-import { deleteAlbum } from '../api/client'
+import { deleteAlbum, updateAlbum } from '../api/client'
+import './AlbumDetailModal.css'
 import { useVault } from '../context/VaultContext'
 import { coverOf } from '../lib/cover'
-import type { Album, Library } from '../types/api'
-import { Button, IconButton, Modal } from './ui'
+import type { Album, AlbumPayload, Library } from '../types/api'
+import { Button, IconButton, Modal, StarRating } from './ui'
 
 interface AlbumDetailModalProps {
   library: Library
@@ -24,6 +25,28 @@ export function AlbumDetailModal({
   onToggleFavorite,
 }: AlbumDetailModalProps) {
   const { refreshState, pushToast } = useVault()
+
+  const handleRate = async (rating: number) => {
+    const payload: AlbumPayload = {
+      title: album.title,
+      artist: album.artist,
+      year: album.year,
+      genre: album.genre,
+      country: album.country,
+      label: album.label,
+      cover: album.cover,
+      spotifyUri: album.spotifyUri,
+      tags: album.tags,
+      tracks: album.tracks,
+      rating,
+    }
+    try {
+      await updateAlbum(album.id, payload)
+      await refreshState()
+    } catch (err) {
+      pushToast(err instanceof Error ? err.message : 'Something went wrong', '⚠')
+    }
+  }
 
   const handleDelete = async () => {
     if (!confirm(`Delete "${album.title}" by ${album.artist}?`)) return
@@ -47,6 +70,7 @@ export function AlbumDetailModal({
         <div>
           <h2>{album.title}</h2>
           <div className="artist">{album.artist}</div>
+          <StarRating value={album.rating} onChange={handleRate} />
           <dl className="spec">
             <dt>Year</dt>
             <dd>{album.year}</dd>

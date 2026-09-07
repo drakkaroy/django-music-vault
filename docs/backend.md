@@ -19,7 +19,7 @@ Rules that must hold:
 - **datetimes are epoch milliseconds** (`addedAt`, `createdAt`), not ISO strings.
 - **keys are camelCase** (`spotifyUri`, `coverFile`, not `spotify_uri`/`cover_file`).
 
-Album shape: `{id, title, artist, year, genre, country, label, cover, coverFile, spotifyUri, tags[], tracks[], favorite, addedAt}`.
+Album shape: `{id, title, artist, year, genre, country, label, cover, coverFile, spotifyUri, tags[], tracks[], favorite, rating, addedAt}`. `rating` is a `0-5` integer (0 = unrated) validated in `clean_album_payload()` — unlike `favorite` (only ever changed via its own toggle endpoint), `rating` flows through the normal create/update payload like `tags`/`tracks`, since it's an editable field in the album form rather than something with its own dedicated action.
 - `cover` — the remote URL (from Spotify or typed manually).
 - `coverFile` — media URL of a locally downloaded copy, or `""`. The frontend's `coverOf()` prefers this over `cover` when present.
 - `tracks` — `[{trackNumber, title, durationMs, spotifyUri}, ...]`, sorted by `trackNumber`. See [Tracks](#tracks) below — like `tags`, this is a flat `JSONField` list, not a separate model.
@@ -44,6 +44,7 @@ All under wherever `music_vault.urls` is mounted (`/` in the standalone project)
 | GET | `api/spotify/status/` | `{connected: bool}` |
 | POST | `api/spotify/disconnect/` | removes the user's `SpotifyAccount` |
 | GET | `api/spotify/now-playing/` | `{playing: bool, track?, artist?, albumImage?, deviceName?}` — see below |
+| GET | `api/spotify/top-albums/?range=` | `{results: [...]}`, `range` one of `short_term`/`medium_term`/`long_term` (default `medium_term`) — see below |
 | POST | `api/albums/<id>/play/` | Spotify Connect playback; optional `{trackUri}` jumps to that track within the album's context |
 | GET | `spotify/connect/` | redirect into Spotify's consent screen (not JSON) |
 | GET | `spotify/callback/` | OAuth redirect target (not JSON) |
@@ -91,3 +92,5 @@ Per-user OAuth, needed because starting playback requires acting *as* a specific
 Setting up the redirect URI correctly in the Spotify Dashboard is the single most common source of playback-connect failures — see [configuration.md](configuration.md#spotify-dashboard-setup).
 
 `PlayerClient.currently_playing()` wraps "Get Playback State" (`GET /me/player`), used by `api/spotify/now-playing/` (`SpotifyNowPlayingView`) to feed the React sidebar's now-playing card — see [frontend.md](frontend.md#react-rewrite). It returns `None` on Spotify's 204 (nothing to report); the view treats *any* failure (no linked account, no active device, a request exception) the same way, as `{"playing": false}` — this endpoint is polled every few seconds, so it must never surface an error to the UI, just silently report nothing. A response with `is_playing: false` (e.g. paused) is also reported as `playing: false` to the frontend — the card is meant to reflect active playback, not track a paused session. `albumImage` uses the *smallest* of Spotify's provided image sizes (`images[-1]`, since the API orders them largest-first) since it's only ever shown as a small thumbnail.
+
+**`api/spotify/top-albums/`** (`SpotifyTopAlbumsView`) powers the statistics view's "Most listened on Spotify" — Spotify has no top-albums endpoint, so it calls `PlayerClient.top_tracks(time_range)` ("Get User's Top Items", tracks) and groups the results by album, ordering by how many of the user's top tracks came from each (`track_count`), capped at 10. This requires the `user-top-read` OAuth scope, added alongside the two playback scopes already requested — an account connected *before* this scope was added won't have it, so the view checks `"user-top-read" in account.scope.split()` (the `scope` string Spotify actually granted, stored on `SpotifyAccount` at OAuth callback) and returns `{"code": "insufficient_scope"}` (409) rather than letting Spotify's own 403 surface. Re-running the existing OAuth flow (no separate disconnect needed) requests the fuller scope and overwrites the stored tokens via `get_or_create` in `spotify_callback`. Each result item is `{spotify_id, spotify_uri, name, artists[], cover_url, external_url, track_count}` — deliberately minimal (no release date, genres, tracklist) since adding one to the collection re-fetches the full detail through the already-existing `api/spotify/albums/<id>/` endpoint rather than duplicating that shape here.

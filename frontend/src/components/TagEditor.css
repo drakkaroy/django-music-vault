@@ -1,0 +1,45 @@
+.tag-editor {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 9px;
+  cursor: text;
+  transition: border-color 0.2s;
+}
+.tag-editor:focus-within {
+  border-color: var(--accent);
+}
+.tag-editor .tg {
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  font-size: 12px;
+  padding: 4px 10px;
+  border-radius: 99px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  animation: pop 0.25s;
+}
+.tag-editor .tg button {
+  color: var(--text-faint);
+  font-size: 13px;
+  line-height: 1;
+}
+.tag-editor .tg button:hover {
+  color: var(--danger);
+}
+.tag-editor input {
+  flex: 1;
+  min-width: 110px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  padding: 5px;
+}
+.tag-editor input:focus {
+  outline: none;
+}

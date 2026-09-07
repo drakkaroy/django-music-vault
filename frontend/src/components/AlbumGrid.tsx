@@ -1,6 +1,7 @@
 import { groupByArtist, type SortKey } from '../lib/filters'
 import type { Album } from '../types/api'
 import type { ViewMode } from './ui'
+import './AlbumGrid.css'
 import { AlbumCard } from './AlbumCard'
 
 interface AlbumGridProps {

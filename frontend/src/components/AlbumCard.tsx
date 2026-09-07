@@ -1,5 +1,6 @@
 import { coverOf } from '../lib/cover'
 import type { Album } from '../types/api'
+import './AlbumCard.css'
 import { FavButton, PlayButton } from './ui'
 
 interface AlbumCardProps {

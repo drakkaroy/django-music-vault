@@ -318,6 +318,61 @@ class SpotifyNowPlayingView(ApiView):
         )
 
 
+TOP_ALBUMS_RANGES = {"short_term", "medium_term", "long_term"}
+
+
+class SpotifyTopAlbumsView(ApiView):
+    """Derives "most listened albums" from top tracks — Spotify has no
+    top-albums endpoint of its own. Requires the `user-top-read` scope,
+    which wasn't requested before this feature shipped: an account
+    connected earlier won't have it in its stored `scope` and needs to
+    reconnect (re-running the OAuth flow simply requests the fuller scope
+    and overwrites the stored tokens — no separate disconnect needed)."""
+
+    def get(self, request):
+        time_range = request.GET.get("range", "medium_term")
+        if time_range not in TOP_ALBUMS_RANGES:
+            time_range = "medium_term"
+        try:
+            account = SpotifyAccount.objects.get(user=request.user)
+        except SpotifyAccount.DoesNotExist:
+            return JsonResponse(
+                {"error": "Connect your Spotify account first", "code": "not_connected"}, status=409
+            )
+        if "user-top-read" not in account.scope.split():
+            return JsonResponse(
+                {"error": "Reconnect your Spotify account to see this", "code": "insufficient_scope"},
+                status=409,
+            )
+        try:
+            tracks = PlayerClient(account).top_tracks(time_range)
+        except requests.RequestException:
+            return JsonResponse({"error": "Spotify request failed"}, status=502)
+
+        albums = {}
+        order = []
+        for track in tracks:
+            album = track.get("album") or {}
+            album_id = album.get("id")
+            if not album_id:
+                continue
+            if album_id not in albums:
+                images = album.get("images") or []
+                order.append(album_id)
+                albums[album_id] = {
+                    "spotify_id": album_id,
+                    "spotify_uri": album.get("uri", ""),
+                    "name": album.get("name", ""),
+                    "artists": [a["name"] for a in album.get("artists", [])],
+                    "cover_url": images[0]["url"] if images else "",
+                    "external_url": (album.get("external_urls") or {}).get("spotify", ""),
+                    "track_count": 0,
+                }
+            albums[album_id]["track_count"] += 1
+        results = sorted((albums[aid] for aid in order), key=lambda a: -a["track_count"])[:10]
+        return JsonResponse({"results": results})
+
+
 class AlbumPlayView(ApiView):
     def post(self, request, pk):
         album = self.get_album(request, pk)

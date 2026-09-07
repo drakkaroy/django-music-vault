@@ -1,5 +1,6 @@
 import { fmtDuration, parseDuration } from '../lib/duration'
 import type { Track } from '../types/api'
+import './TrackEditor.css'
 import { Button } from './ui'
 
 interface TrackEditorProps {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { spotifyNowPlaying } from '../api/client'
 import type { NowPlaying } from '../types/api'
+import './NowPlayingCard.css'
 
 const POLL_MS = 12000
 

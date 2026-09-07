@@ -1,4 +1,5 @@
 import { IconButton } from './IconButton'
+import './ViewToggle.css'
 
 export type ViewMode = 'detailed' | 'covers'
 

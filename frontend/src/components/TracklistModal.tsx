@@ -1,5 +1,6 @@
 import { fmtDuration } from '../lib/duration'
 import type { Album } from '../types/api'
+import './TracklistModal.css'
 import { IconButton, Modal } from './ui'
 
 interface TracklistModalProps {

@@ -190,6 +190,32 @@ class AlbumTests(ApiTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("artist", response.json()["error"])
 
+    def test_create_album_defaults_rating_to_zero(self):
+        payload = {"title": "T", "artist": "A", "year": 2000, "genre": "G", "country": "C"}
+        response = self.post_json(reverse("music_vault:api-library-albums", args=[self.library.pk]), payload)
+        self.assertEqual(response.json()["rating"], 0)
+
+    def test_create_album_accepts_rating(self):
+        payload = {"title": "T", "artist": "A", "year": 2000, "genre": "G", "country": "C", "rating": 4}
+        response = self.post_json(reverse("music_vault:api-library-albums", args=[self.library.pk]), payload)
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["rating"], 4)
+
+    def test_create_album_rejects_out_of_range_rating(self):
+        payload = {"title": "T", "artist": "A", "year": 2000, "genre": "G", "country": "C", "rating": 6}
+        response = self.post_json(reverse("music_vault:api-library-albums", args=[self.library.pk]), payload)
+        self.assertEqual(response.status_code, 400)
+
+    def test_update_album_changes_rating(self):
+        album = make_album(self.library, rating=2)
+        payload = {
+            "title": album.title, "artist": album.artist, "year": album.year,
+            "genre": album.genre, "country": album.country, "rating": 5,
+        }
+        response = self.put_json(reverse("music_vault:api-album", args=[album.pk]), payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["rating"], 5)
+
     def test_update_and_delete_album(self):
         album = make_album(self.library)
         response = self.put_json(
@@ -570,6 +596,61 @@ class NowPlayingTests(ApiTestCase):
         }
         response = self.client.get(reverse("music_vault:api-spotify-now-playing"))
         self.assertFalse(response.json()["playing"])
+
+
+class TopAlbumsTests(ApiTestCase):
+    def test_requires_connected_account(self):
+        response = self.client.get(reverse("music_vault:api-spotify-top-albums"))
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "not_connected")
+
+    def test_prompts_reconnect_when_scope_missing(self):
+        SpotifyAccount.objects.create(
+            user=self.user, access_token="a", refresh_token="r", expires_at=0,
+            scope="user-read-playback-state user-modify-playback-state",
+        )
+        response = self.client.get(reverse("music_vault:api-spotify-top-albums"))
+        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.json()["code"], "insufficient_scope")
+
+    @mock.patch("music_vault.views.PlayerClient")
+    def test_groups_top_tracks_into_albums_by_track_count(self, player_client_cls):
+        SpotifyAccount.objects.create(
+            user=self.user, access_token="a", refresh_token="r", expires_at=0,
+            scope="user-read-playback-state user-modify-playback-state user-top-read",
+        )
+
+        def album(album_id, name):
+            return {
+                "id": album_id, "uri": f"spotify:album:{album_id}", "name": name,
+                "artists": [{"name": "Daft Punk"}],
+                "images": [{"url": "big.jpg"}, {"url": "small.jpg"}],
+                "external_urls": {"spotify": f"https://open.spotify.com/album/{album_id}"},
+            }
+
+        player_client_cls.return_value.top_tracks.return_value = [
+            {"album": album("A", "Discovery")},
+            {"album": album("B", "Homework")},
+            {"album": album("A", "Discovery")},
+        ]
+        response = self.client.get(reverse("music_vault:api-spotify-top-albums"))
+        self.assertEqual(response.status_code, 200)
+        results = response.json()["results"]
+        self.assertEqual(results[0]["spotify_id"], "A")
+        self.assertEqual(results[0]["track_count"], 2)
+        self.assertEqual(results[0]["cover_url"], "big.jpg")
+        self.assertEqual(results[1]["spotify_id"], "B")
+        self.assertEqual(results[1]["track_count"], 1)
+
+    @mock.patch("music_vault.views.PlayerClient")
+    def test_spotify_request_failure_returns_502(self, player_client_cls):
+        SpotifyAccount.objects.create(
+            user=self.user, access_token="a", refresh_token="r", expires_at=0,
+            scope="user-top-read",
+        )
+        player_client_cls.return_value.top_tracks.side_effect = requests.RequestException()
+        response = self.client.get(reverse("music_vault:api-spotify-top-albums"))
+        self.assertEqual(response.status_code, 502)
 
 
 class SpotifyTests(ApiTestCase):

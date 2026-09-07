@@ -1,8 +1,9 @@
 import type { ButtonHTMLAttributes } from 'react'
+import './Button.css'
 
 interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Maps to the .btn-accent/.btn-ghost/.btn-danger modifier classes in
-   * styles.css. Omit for the plain .btn look. */
+   * Button.css. Omit for the plain .btn look. */
   variant?: 'accent' | 'ghost' | 'danger'
 }
 

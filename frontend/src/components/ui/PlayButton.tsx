@@ -1,3 +1,5 @@
+import './PlayButton.css'
+
 interface PlayButtonProps {
   label: string
   onClick: () => void

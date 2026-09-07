@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react'
+import './NavItem.css'
 
 interface NavItemProps {
   /** A glyph string (⌂, ♥) or a component like <LibDot /> — both render

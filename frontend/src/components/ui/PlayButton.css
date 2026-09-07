@@ -1,0 +1,23 @@
+.play-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #04220f;
+  font-size: 17px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.5);
+  transform: translateY(8px);
+  transition:
+    transform 0.25s,
+    background 0.2s;
+  padding-left: 3px;
+}
+.play-btn:hover {
+  background: #3fe37a;
+  transform: scale(1.08);
+}
+/* Reveal-on-hover (translateY(0) when its parent .album-card is hovered)
+   is AlbumCard's hover choreography, not this button's own concern — see
+   AlbumCard.css. */

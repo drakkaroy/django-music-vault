@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react'
+import './IconButton.css'
 
 interface IconButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
   /** Icon-only buttons need a label a screen reader can announce — make it

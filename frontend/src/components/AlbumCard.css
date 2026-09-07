@@ -1,0 +1,87 @@
+.album-card {
+  text-align: left;
+  border-radius: var(--radius);
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  animation: cardIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) backwards;
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.album-card:hover {
+  transform: translateY(-6px);
+}
+.cover-wrap {
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  aspect-ratio: 1;
+  background: var(--bg-elev);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+}
+.cover-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.album-card:hover .cover-wrap img {
+  transform: scale(1.06);
+}
+.cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.55), transparent 55%);
+  opacity: 0;
+  transition: opacity 0.25s;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  padding: 12px;
+}
+.album-card:hover .cover-overlay,
+.album-card:focus-within .cover-overlay {
+  opacity: 1;
+}
+/* PlayButton/FavButton rest at translateY(8px) (see their own .css) and
+   only reveal to translateY(0) once this card is hovered/focused — that
+   choreography belongs here, not to the buttons themselves. */
+.album-card:hover .play-btn,
+.play-btn:focus-visible {
+  transform: translateY(0);
+}
+.album-card:hover .fav-btn,
+.fav-btn:focus-visible {
+  transform: translateY(0);
+}
+.fav-corner {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  color: var(--danger);
+  font-size: 15px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+  animation: pop 0.3s;
+}
+.album-meta {
+  padding: 10px 4px 0;
+}
+.album-meta .t {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.album-meta .a {
+  font-size: 12.5px;
+  color: var(--text-dim);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.album-meta .y {
+  font-size: 11.5px;
+  color: var(--text-faint);
+  margin-top: 3px;
+}

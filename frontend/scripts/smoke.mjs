@@ -48,6 +48,7 @@ const fakeState = {
           tags: ['90s'],
           tracks: [{ trackNumber: 1, title: 'Airbag', durationMs: 284000, spotifyUri: '' }],
           favorite: true,
+          rating: 5,
           addedAt: Date.now(),
         },
       ],
@@ -148,6 +149,7 @@ window.fetch = async (url, options = {}) => {
         spotifyUri: t.spotifyUri || '',
       })),
       favorite: false,
+      rating: body.rating || 0,
       addedAt: Date.now(),
     }
     library.albums.push(created)
@@ -175,6 +177,7 @@ window.fetch = async (url, options = {}) => {
         tags: a.tags || [],
         tracks: a.tracks || [],
         favorite: Boolean(a.favorite),
+        rating: a.rating || 0,
         addedAt: Date.now(),
       })),
     }))
@@ -271,6 +274,7 @@ checks.push(
     'album detail: shows Play/Tracklist/Favorite/Edit/Delete actions',
     ['Play on Spotify', 'Tracklist', 'Unfavorite', 'Edit', 'Delete'].every((s) => detailHtml.includes(s)),
   ],
+  ['album detail: shows its 5-star rating', detailHtml.includes('5 out of 5 stars')],
 )
 
 clickButtonContaining('Tracklist')
@@ -294,6 +298,33 @@ checks.push(
   ['favorites view: shows the favorites heading', favoritesHtml.includes('♥ Favorites')],
   ['favorites view: renders the favorited album with its library name', favoritesHtml.includes('OK Computer') && favoritesHtml.includes('Rock')],
 )
+
+// Statistics: one library, one 5-star album ("OK Computer", genre "Alt
+// Rock", tag "90s") — check the summary tiles and the top-rated list.
+clickButtonContaining('Statistics')
+await new Promise((r) => setTimeout(r, 50))
+const statsHtml = window.document.getElementById('root').innerHTML
+checks.push(
+  ['stats view: shows the statistics heading', statsHtml.includes('📊 Statistics')],
+  ['stats view: total album count', /<div class="stat-tile-value">1<\/div>/.test(statsHtml)],
+  ['stats view: shows the genre breakdown', statsHtml.includes('Alt Rock')],
+  ['stats view: shows the top tag with its count', statsHtml.includes('#90s · 1')],
+  ['stats view: shows the top-rated album', statsHtml.includes('OK Computer') && statsHtml.includes('Radiohead')],
+  [
+    'stats view: prompts to connect Spotify for "most listened" when disconnected',
+    statsHtml.includes('Most listened on Spotify') && statsHtml.includes('Connect your Spotify account'),
+  ],
+)
+const topRatedItem = window.document.querySelector('[aria-label="Open OK Computer by Radiohead"]')
+if (!topRatedItem) throw new Error('Top-rated album item not found in the statistics view')
+topRatedItem.click()
+await new Promise((r) => setTimeout(r, 50))
+checks.push([
+  'stats view: clicking a top-rated album opens its detail modal',
+  Boolean(window.document.querySelector('.modal-backdrop')),
+])
+window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+await new Promise((r) => setTimeout(r, 30))
 
 // React instruments HTMLInputElement's `value` setter to track changes for
 // controlled inputs; a plain `input.value = x` goes through that same
@@ -354,6 +385,11 @@ clickButtonContaining('+ Add track')
 await new Promise((r) => setTimeout(r, 20))
 setInputValue(window.document.querySelector('.tr-title'), 'One More Time')
 
+const fourthStar = window.document.querySelector('[aria-label="Rate 4 stars"]')
+if (!fourthStar) throw new Error('Rating star button not found in the album form')
+fourthStar.click()
+await new Promise((r) => setTimeout(r, 20))
+
 const addAlbumSubmit = [...window.document.querySelectorAll('button')].find((b) => b.textContent === 'Add album')
 if (!addAlbumSubmit) throw new Error('Could not find the "Add album" submit button')
 addAlbumSubmit.click()
@@ -366,6 +402,7 @@ checks.push(
   ['album form: result count updates', afterAlbumHtml.includes('1 of 1 albums')],
   ['album form: tag was included in the actual POST payload', lastAlbumCreatePayload?.tags?.includes('dance')],
   ['album form: track was included in the actual POST payload', lastAlbumCreatePayload?.tracks?.[0]?.title === 'One More Time'],
+  ['album form: rating was included in the actual POST payload', lastAlbumCreatePayload?.rating === 4],
 )
 
 // Import an album from Spotify search into "Rock" (not "Jazz Nights", which

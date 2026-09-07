@@ -1,3 +1,5 @@
+import './ColorSwatch.css'
+
 interface ColorSwatchProps {
   color: string
   active?: boolean

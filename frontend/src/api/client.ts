@@ -6,6 +6,8 @@ import type {
   NowPlaying,
   SpotifySearchResult,
   SpotifyStatus,
+  SpotifyTopAlbum,
+  TopAlbumsRange,
   VaultState,
 } from '../types/api'
 
@@ -33,7 +35,9 @@ export function getCookie(name: string): string {
   )
 }
 
-class ApiRequestError extends Error {}
+export class ApiRequestError extends Error {
+  code?: string
+}
 
 /** Same contract as the original script.js's api(): reload on 401 (session
  * expired), extract {error} on failure, null body on 204. */
@@ -50,13 +54,17 @@ async function api<T>(path: string, method = 'GET', body?: unknown): Promise<T> 
   }
   if (!res.ok) {
     let message = `Request failed (${res.status})`
+    let code: string | undefined
     try {
       const data = await res.json()
       message = data.error || message
+      code = data.code
     } catch {
       /* non-JSON error body */
     }
-    throw new ApiRequestError(message)
+    const err = new ApiRequestError(message)
+    err.code = code
+    throw err
   }
   return res.status === 204 ? (null as T) : ((await res.json()) as T)
 }
@@ -85,3 +93,5 @@ export const spotifyAlbumDetail = (spotifyId: string) =>
 export const spotifyStatus = () => api<SpotifyStatus>('spotify/status/')
 export const spotifyDisconnect = () => api<SpotifyStatus>('spotify/disconnect/', 'POST')
 export const spotifyNowPlaying = () => api<NowPlaying>('spotify/now-playing/')
+export const spotifyTopAlbums = (range: TopAlbumsRange) =>
+  api<{ results: SpotifyTopAlbum[] }>(`spotify/top-albums/?range=${range}`)

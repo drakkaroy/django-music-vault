@@ -1,0 +1,17 @@
+.star-rating {
+  display: inline-flex;
+  gap: 3px;
+  font-size: 19px;
+  color: var(--gold);
+  margin-bottom: 16px;
+}
+.star-rating button {
+  transition: transform 0.12s;
+}
+.star-rating button:hover {
+  transform: scale(1.15);
+}
+.star-rating.read-only {
+  font-size: 13px;
+  color: var(--gold);
+}

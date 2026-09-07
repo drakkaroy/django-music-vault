@@ -1,4 +1,5 @@
 import { useVault } from '../context/VaultContext'
+import './ToastStack.css'
 
 export function ToastStack() {
   const { toasts } = useVault()

@@ -50,6 +50,10 @@ class Album(models.Model):
     # nothing else in the app ever needs to query a single track by id.
     tracks = models.JSONField(default=list, blank=True)
     favorite = models.BooleanField(default=False, db_index=True)
+    rating = models.PositiveSmallIntegerField(
+        default=0,
+        validators=[MinValueValidator(0), MaxValueValidator(5)],
+    )
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

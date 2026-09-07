@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { getCookie, LOGOUT_URL } from '../api/client'
 import type { View } from '../App'
 import type { Library } from '../types/api'
+import './Sidebar.css'
 import { NowPlayingCard } from './NowPlayingCard'
 import { FootButton, LibDot, NavItem } from './ui'
 
@@ -47,6 +48,7 @@ export function Sidebar({
         active={view === 'favorites'}
         onClick={() => onNavigate('favorites')}
       />
+      <NavItem icon="📊" label="Statistics" active={view === 'stats'} onClick={() => onNavigate('stats')} />
       <div className="nav-section">Libraries</div>
       <div className="lib-list">
         {libraries.map((l) => (

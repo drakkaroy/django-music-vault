@@ -1,0 +1,25 @@
+.fav-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: rgba(13, 15, 18, 0.65);
+  backdrop-filter: blur(4px);
+  color: #fff;
+  font-size: 16px;
+  display: grid;
+  place-items: center;
+  transform: translateY(8px);
+  transition:
+    transform 0.25s 0.04s,
+    color 0.2s;
+}
+.fav-btn.on {
+  color: var(--danger);
+}
+.fav-btn:hover {
+  color: var(--danger);
+}
+/* The translateY(8px) resting position above and the reveal-on-hover
+   transform (translateY(0) when its parent .album-card is hovered) are
+   split on purpose — the reveal is AlbumCard's hover choreography, not
+   this button's own concern. See AlbumCard.css. */

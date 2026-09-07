@@ -1,5 +1,6 @@
 import { coverOf } from '../lib/cover'
 import type { Library } from '../types/api'
+import './HomeView.css'
 import { Button, LibDot } from './ui'
 
 interface HomeViewProps {

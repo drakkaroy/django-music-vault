@@ -29,6 +29,7 @@ export interface Album {
   tags: string[]
   tracks: Track[]
   favorite: boolean
+  rating: number
   addedAt: number
 }
 
@@ -56,6 +57,7 @@ export interface AlbumPayload {
   spotifyUri?: string
   tags?: string[]
   tracks?: Track[]
+  rating?: number
   downloadCover?: boolean
 }
 
@@ -92,6 +94,18 @@ export interface SpotifySearchResult {
 
 export interface SpotifyStatus {
   connected: boolean
+}
+
+export type TopAlbumsRange = 'short_term' | 'medium_term' | 'long_term'
+
+export interface SpotifyTopAlbum {
+  spotify_id: string
+  spotify_uri: string
+  name: string
+  artists: string[]
+  cover_url: string
+  external_url: string
+  track_count: number
 }
 
 export interface NowPlaying {

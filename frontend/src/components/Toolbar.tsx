@@ -1,5 +1,6 @@
 import { emptyFilters, type Filters, type SortKey } from '../lib/filters'
 import type { Album } from '../types/api'
+import './Toolbar.css'
 import { TagChip } from './ui'
 
 interface ToolbarProps {
@@ -17,6 +18,7 @@ const SORT_OPTIONS: Array<[SortKey, string]> = [
   ['year-desc', 'Year ↓'],
   ['title', 'Title A–Z'],
   ['recent', 'Recently added'],
+  ['rating-desc', 'Highest rated'],
 ]
 
 export function Toolbar({ albums, filters, onChange }: ToolbarProps) {
