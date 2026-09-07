@@ -2,6 +2,7 @@ import { useRef } from 'react'
 import { getCookie, LOGOUT_URL } from '../api/client'
 import type { View } from '../App'
 import type { Library } from '../types/api'
+import './Sidebar.css'
 import { NowPlayingCard } from './NowPlayingCard'
 import { FootButton, LibDot, NavItem } from './ui'
 

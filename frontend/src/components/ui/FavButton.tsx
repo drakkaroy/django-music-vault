@@ -1,3 +1,5 @@
+import './FavButton.css'
+
 interface FavButtonProps {
   active: boolean
   label: string

@@ -1,4 +1,5 @@
 import { deleteAlbum, updateAlbum } from '../api/client'
+import './AlbumDetailModal.css'
 import { useVault } from '../context/VaultContext'
 import { coverOf } from '../lib/cover'
 import type { Album, AlbumPayload, Library } from '../types/api'

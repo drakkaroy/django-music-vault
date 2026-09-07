@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { spotifyAlbumDetail, spotifySearch } from '../api/client'
 import { genCover } from '../lib/cover'
 import type { SpotifySearchResult } from '../types/api'
+import './SpotifySearchModal.css'
 import { Button, IconButton, Modal } from './ui'
 
 interface SpotifySearchModalProps {

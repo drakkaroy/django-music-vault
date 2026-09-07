@@ -1,0 +1,30 @@
+.stat-bar-row {
+  display: grid;
+  grid-template-columns: 90px 1fr 28px;
+  align-items: center;
+  gap: 10px;
+  font-size: 12.5px;
+  margin-bottom: 8px;
+}
+.stat-bar-label {
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stat-bar-track {
+  background: var(--bg-elev);
+  border-radius: 99px;
+  height: 8px;
+  overflow: hidden;
+}
+.stat-bar-fill {
+  background: var(--accent);
+  height: 100%;
+  border-radius: 99px;
+  transition: width 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.stat-bar-count {
+  color: var(--text-faint);
+  text-align: right;
+}

@@ -1,0 +1,41 @@
+.track-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.track-row-edit {
+  display: grid;
+  grid-template-columns: 52px 1fr 72px 30px;
+  gap: 8px;
+  align-items: center;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 8px;
+}
+.track-row-edit input {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 13px;
+  padding: 5px;
+  min-width: 0;
+}
+.track-row-edit input:focus {
+  outline: none;
+}
+.track-row-edit .tr-num {
+  text-align: center;
+  -moz-appearance: textfield;
+}
+.track-row-edit .tr-dur {
+  text-align: right;
+}
+.track-row-edit .tr-remove {
+  color: var(--text-faint);
+  font-size: 13px;
+  justify-self: center;
+}
+.track-row-edit .tr-remove:hover {
+  color: var(--danger);
+}

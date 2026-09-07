@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react'
 import { createLibrary, updateLibrary } from '../api/client'
 import { useVault } from '../context/VaultContext'
 import type { Library } from '../types/api'
+import './LibraryFormModal.css'
 import { Button, ColorSwatch, Modal } from './ui'
 
 const LIB_COLORS = ['#e0654a', '#4a90e0', '#1ed760', '#b678e8', '#ffcf5c', '#ff5c8a', '#4ad4c9', '#8a93a5']

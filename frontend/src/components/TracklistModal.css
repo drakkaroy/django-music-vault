@@ -1,0 +1,42 @@
+.track-list {
+  list-style: none;
+  max-height: 56vh;
+  overflow-y: auto;
+}
+.track-row {
+  display: grid;
+  grid-template-columns: 28px 1fr auto 34px;
+  gap: 12px;
+  align-items: center;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13.5px;
+}
+.track-row:last-child {
+  border-bottom: none;
+}
+.track-row .tr-num {
+  color: var(--text-faint);
+  text-align: right;
+}
+.track-row .tr-dur {
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.track-row .tr-play {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--bg-elev);
+  color: var(--text);
+  font-size: 11px;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.track-row .tr-play:hover {
+  background: var(--accent);
+  color: #04220f;
+}

@@ -1,3 +1,5 @@
+import './StatBar.css'
+
 interface StatBarProps {
   label: string
   count: number

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { ApiRequestError, SPOTIFY_CONNECT_URL, spotifyTopAlbums } from '../api/client'
 import type { Album, Library, SpotifyTopAlbum, TopAlbumsRange } from '../types/api'
+import './TopAlbumsSection.css'
 import { Button } from './ui'
 
 const RANGES: Array<[TopAlbumsRange, string]> = [

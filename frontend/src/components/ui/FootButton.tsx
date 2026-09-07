@@ -1,4 +1,5 @@
 import type { ButtonHTMLAttributes } from 'react'
+import './FootButton.css'
 
 export function FootButton({ className, type = 'button', ...rest }: ButtonHTMLAttributes<HTMLButtonElement>) {
   const classes = ['foot-btn', className].filter(Boolean).join(' ')

@@ -1,5 +1,6 @@
 import { emptyFilters, type Filters, type SortKey } from '../lib/filters'
 import type { Album } from '../types/api'
+import './Toolbar.css'
 import { TagChip } from './ui'
 
 interface ToolbarProps {

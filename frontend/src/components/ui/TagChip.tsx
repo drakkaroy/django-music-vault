@@ -1,3 +1,5 @@
+import './TagChip.css'
+
 interface TagChipProps {
   label: string
   active?: boolean

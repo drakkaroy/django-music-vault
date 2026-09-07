@@ -1,3 +1,5 @@
+import './StarRating.css'
+
 interface StarRatingProps {
   value: number
   /** Omit for a read-only display (e.g. on a card). */

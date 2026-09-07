@@ -1,0 +1,163 @@
+/* Utility classes used by 2+ components — page-shell layout, empty states,
+   form fields, and modal conventions that don't belong to one component.
+   Everything else lives in its owning component's own .css file. */
+
+/* Page shell (HomeView, LibraryView, FavoritesView, StatsView) */
+.view {
+  animation: viewIn 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.page-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 26px;
+}
+.page-head h1 {
+  font-size: clamp(26px, 4vw, 40px);
+  font-weight: 800;
+  letter-spacing: -0.5px;
+}
+.page-sub {
+  color: var(--text-dim);
+  font-size: 14px;
+  margin-top: 6px;
+}
+.head-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Empty states (AlbumGrid, FavoritesView, StatsView) */
+.empty-state {
+  text-align: center;
+  padding: 70px 20px;
+  color: var(--text-dim);
+  animation: viewIn 0.4s;
+}
+.empty-state .big {
+  font-size: 52px;
+  margin-bottom: 14px;
+  opacity: 0.5;
+}
+.empty-state h3 {
+  font-size: 19px;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.empty-state p {
+  font-size: 13.5px;
+  max-width: 380px;
+  margin: 0 auto 20px;
+}
+
+/* Result bar above an album grid (LibraryView, FavoritesView) */
+.grid-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.grid-bar-end {
+  justify-content: flex-end;
+}
+.result-count {
+  color: var(--text-faint);
+  font-size: 12px;
+}
+
+/* Form fields (AlbumFormModal, LibraryFormModal) */
+.field {
+  margin-bottom: 16px;
+}
+.field label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-dim);
+  margin-bottom: 7px;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+.field input,
+.field select {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 11px 14px;
+  color: var(--text);
+  font-size: 14px;
+  transition:
+    border-color 0.2s,
+    box-shadow 0.2s;
+}
+.field input:focus,
+.field select:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(30, 215, 96, 0.13);
+}
+.field .hint {
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 5px;
+}
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+@media (max-width: 520px) {
+  .field-row {
+    grid-template-columns: 1fr;
+  }
+}
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 24px;
+}
+
+/* Standard close button position for any modal (AlbumDetailModal,
+   PickLibraryModal, SpotifySearchModal, TracklistModal) — not part of
+   Modal.tsx itself since not every modal has one. */
+.modal-close {
+  position: sticky;
+  float: right;
+  top: 0;
+  margin: -8px -8px 0 0;
+}
+
+/* Definition-list detail block (AlbumDetailModal, SpotifySearchModal's
+   preview, StatsView's highlights) */
+.spec {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 7px 18px;
+  font-size: 13.5px;
+  margin-bottom: 18px;
+}
+.spec dt {
+  color: var(--text-faint);
+  font-weight: 600;
+}
+.spec dd {
+  color: var(--text);
+}
+.detail-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Centered loading/status message (SpotifySearchModal, TopAlbumsSection) */
+.sp-hint {
+  color: var(--text-faint);
+  font-size: 13px;
+  padding: 30px 0;
+  text-align: center;
+}

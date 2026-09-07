@@ -2,6 +2,7 @@ import { coverOf } from '../lib/cover'
 import { fmtDurationLong } from '../lib/duration'
 import { computeStats } from '../lib/stats'
 import type { Album, Library, SpotifyTopAlbum } from '../types/api'
+import './StatsView.css'
 import { TopAlbumsSection } from './TopAlbumsSection'
 import { StarRating, StatBar } from './ui'
 

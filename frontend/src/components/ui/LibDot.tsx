@@ -1,3 +1,5 @@
+import './LibDot.css'
+
 interface LibDotProps {
   color: string
   /** Default size (9px) comes from styles.css; pass one to override, e.g.
