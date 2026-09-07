@@ -32,6 +32,7 @@ def album_to_dict(album):
         "tags": album.tags or [],
         "tracks": [_track_to_dict(t) for t in tracks],
         "favorite": album.favorite,
+        "rating": album.rating,
         "addedAt": _epoch_ms(album.created_at),
     }
 
@@ -99,6 +100,12 @@ def clean_album_payload(data):
     tracks, error = _clean_tracks(data.get("tracks") or [])
     if error:
         return None, error
+    try:
+        rating = int(data.get("rating") or 0)
+    except (TypeError, ValueError):
+        return None, "Rating must be a number"
+    if not 0 <= rating <= 5:
+        return None, "Rating must be between 0 and 5"
     return {
         "title": str(data["title"]).strip()[:200],
         "artist": str(data["artist"]).strip()[:200],
@@ -110,6 +117,7 @@ def clean_album_payload(data):
         "spotify_uri": str(data.get("spotifyUri", "")).strip()[:255],
         "tags": [t.strip()[:50] for t in tags if t.strip()],
         "tracks": tracks,
+        "rating": rating,
     }, None
 
 

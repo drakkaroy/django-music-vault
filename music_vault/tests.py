@@ -190,6 +190,32 @@ class AlbumTests(ApiTestCase):
         self.assertEqual(response.status_code, 400)
         self.assertIn("artist", response.json()["error"])
 
+    def test_create_album_defaults_rating_to_zero(self):
+        payload = {"title": "T", "artist": "A", "year": 2000, "genre": "G", "country": "C"}
+        response = self.post_json(reverse("music_vault:api-library-albums", args=[self.library.pk]), payload)
+        self.assertEqual(response.json()["rating"], 0)
+
+    def test_create_album_accepts_rating(self):
+        payload = {"title": "T", "artist": "A", "year": 2000, "genre": "G", "country": "C", "rating": 4}
+        response = self.post_json(reverse("music_vault:api-library-albums", args=[self.library.pk]), payload)
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["rating"], 4)
+
+    def test_create_album_rejects_out_of_range_rating(self):
+        payload = {"title": "T", "artist": "A", "year": 2000, "genre": "G", "country": "C", "rating": 6}
+        response = self.post_json(reverse("music_vault:api-library-albums", args=[self.library.pk]), payload)
+        self.assertEqual(response.status_code, 400)
+
+    def test_update_album_changes_rating(self):
+        album = make_album(self.library, rating=2)
+        payload = {
+            "title": album.title, "artist": album.artist, "year": album.year,
+            "genre": album.genre, "country": album.country, "rating": 5,
+        }
+        response = self.put_json(reverse("music_vault:api-album", args=[album.pk]), payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()["rating"], 5)
+
     def test_update_and_delete_album(self):
         album = make_album(self.library)
         response = self.put_json(
