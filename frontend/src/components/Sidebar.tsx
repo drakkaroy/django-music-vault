@@ -36,7 +36,7 @@ export function Sidebar({
     <nav className={`sidebar ${open ? 'open' : ''}`} aria-label="Main navigation">
       <div className="brand">
         <span className="logo" aria-hidden="true" />
-        VinylVault
+        Music Vault
       </div>
       <NavItem icon="⌂" label="Home" active={view === 'home'} onClick={() => onNavigate('home')} />
       <NavItem

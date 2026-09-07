@@ -205,7 +205,7 @@ const html = window.document.getElementById('root').innerHTML
 
 const checks = [
   ['renders something into #root', html.length > 0],
-  ['shows the VinylVault brand', html.includes('VinylVault')],
+  ['shows the Music Vault brand', html.includes('Music Vault')],
   ['shows the Home view heading', html.includes('Your Libraries')],
   ['renders the mocked library name', html.includes('Rock')],
   ['renders the correct library/album counts', html.includes('1 libraries') && html.includes('1 albums')],
