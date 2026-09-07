@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { spotifyAlbumDetail, spotifySearch } from '../api/client'
 import { genCover } from '../lib/cover'
 import type { SpotifySearchResult } from '../types/api'
@@ -40,6 +40,12 @@ export function SpotifySearchModal({
       setStatus('error')
     }
   }
+
+  useEffect(() => {
+    if (!query.trim()) return
+    const timer = setTimeout(() => runSearch(query), 450)
+    return () => clearTimeout(timer)
+  }, [query])
 
   const showPreview = async (spotifyId: string) => {
     setStatus('loading')
