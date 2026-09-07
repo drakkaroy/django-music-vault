@@ -64,7 +64,7 @@ python manage.py test music_vault
 - [x] Autofill the album form from Spotify search in the UI (with local cover download)
 - [x] Real playback via Spotify Connect (per-user OAuth)
 - [x] Tracklists (imported or manual) with per-track playback
-- [ ] Star ratings and collection statistics
+- [x] Star ratings and collection statistics
 
 ## License
 

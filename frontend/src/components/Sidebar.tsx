@@ -47,6 +47,7 @@ export function Sidebar({
         active={view === 'favorites'}
         onClick={() => onNavigate('favorites')}
       />
+      <NavItem icon="📊" label="Statistics" active={view === 'stats'} onClick={() => onNavigate('stats')} />
       <div className="nav-section">Libraries</div>
       <div className="lib-list">
         {libraries.map((l) => (

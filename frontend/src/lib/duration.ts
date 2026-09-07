@@ -8,6 +8,16 @@ export function fmtDuration(ms: number): string {
   return `${m}:${String(s).padStart(2, '0')}`
 }
 
+/** "14h 32m" style, for a collection-wide total rather than a single
+ * track — fmtDuration()'s m:ss would be unreadable at that scale. */
+export function fmtDurationLong(ms: number): string {
+  const totalMinutes = Math.round((ms || 0) / 60000)
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  if (h === 0) return `${m}m`
+  return `${h}h ${m}m`
+}
+
 export function parseDuration(str: string): number {
   const parts = String(str || '')
     .trim()

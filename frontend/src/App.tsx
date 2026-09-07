@@ -8,12 +8,13 @@ import { LibraryFormModal } from './components/LibraryFormModal'
 import { LibraryView } from './components/LibraryView'
 import { Sidebar } from './components/Sidebar'
 import { SpotifySearchModal } from './components/SpotifySearchModal'
+import { StatsView } from './components/StatsView'
 import { ToastStack } from './components/ToastStack'
 import { TracklistModal } from './components/TracklistModal'
 import { useVault } from './context/VaultContext'
 import type { Album, Library, SpotifySearchResult } from './types/api'
 
-export type View = 'home' | 'favorites' | 'library'
+export type View = 'home' | 'favorites' | 'library' | 'stats'
 
 interface Route {
   view: View
@@ -60,6 +61,13 @@ export default function App() {
 
   const openAlbumDetail = (album: Album, library: Library) =>
     setModal({ type: 'album-detail', library, album })
+
+  /** Favorites/Statistics show albums from any library, so the owning
+   * library has to be looked up by the album's id first. */
+  const openAnyAlbum = (album: Album) => {
+    const owner = state.libraries.find((l) => l.albums.some((a) => a.id === album.id))
+    if (owner) openAlbumDetail(album, owner)
+  }
 
   const handleToggleFavorite = async (album: Album) => {
     try {
@@ -155,14 +163,12 @@ export default function App() {
           {route.view === 'favorites' && (
             <FavoritesView
               libraries={state.libraries}
-              onOpenAlbum={(album) => {
-                const owner = state.libraries.find((l) => l.albums.some((a) => a.id === album.id))
-                if (owner) openAlbumDetail(album, owner)
-              }}
+              onOpenAlbum={openAnyAlbum}
               onPlayAlbum={handlePlayAlbum}
               onToggleFavorite={handleToggleFavorite}
             />
           )}
+          {route.view === 'stats' && <StatsView libraries={state.libraries} onOpenAlbum={openAnyAlbum} />}
           {route.view === 'library' && activeLibrary && (
             <LibraryView
               library={activeLibrary}

@@ -299,6 +299,29 @@ checks.push(
   ['favorites view: renders the favorited album with its library name', favoritesHtml.includes('OK Computer') && favoritesHtml.includes('Rock')],
 )
 
+// Statistics: one library, one 5-star album ("OK Computer", genre "Alt
+// Rock", tag "90s") — check the summary tiles and the top-rated list.
+clickButtonContaining('Statistics')
+await new Promise((r) => setTimeout(r, 50))
+const statsHtml = window.document.getElementById('root').innerHTML
+checks.push(
+  ['stats view: shows the statistics heading', statsHtml.includes('📊 Statistics')],
+  ['stats view: total album count', /<div class="stat-tile-value">1<\/div>/.test(statsHtml)],
+  ['stats view: shows the genre breakdown', statsHtml.includes('Alt Rock')],
+  ['stats view: shows the top tag with its count', statsHtml.includes('#90s · 1')],
+  ['stats view: shows the top-rated album', statsHtml.includes('OK Computer') && statsHtml.includes('Radiohead')],
+)
+const topRatedItem = window.document.querySelector('[aria-label="Open OK Computer by Radiohead"]')
+if (!topRatedItem) throw new Error('Top-rated album item not found in the statistics view')
+topRatedItem.click()
+await new Promise((r) => setTimeout(r, 50))
+checks.push([
+  'stats view: clicking a top-rated album opens its detail modal',
+  Boolean(window.document.querySelector('.modal-backdrop')),
+])
+window.document.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+await new Promise((r) => setTimeout(r, 30))
+
 // React instruments HTMLInputElement's `value` setter to track changes for
 // controlled inputs; a plain `input.value = x` goes through that same
 // instrumented setter, so React's tracker sees "no change" and never fires

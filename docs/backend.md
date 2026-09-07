@@ -19,7 +19,7 @@ Rules that must hold:
 - **datetimes are epoch milliseconds** (`addedAt`, `createdAt`), not ISO strings.
 - **keys are camelCase** (`spotifyUri`, `coverFile`, not `spotify_uri`/`cover_file`).
 
-Album shape: `{id, title, artist, year, genre, country, label, cover, coverFile, spotifyUri, tags[], tracks[], favorite, addedAt}`.
+Album shape: `{id, title, artist, year, genre, country, label, cover, coverFile, spotifyUri, tags[], tracks[], favorite, rating, addedAt}`. `rating` is a `0-5` integer (0 = unrated) validated in `clean_album_payload()` — unlike `favorite` (only ever changed via its own toggle endpoint), `rating` flows through the normal create/update payload like `tags`/`tracks`, since it's an editable field in the album form rather than something with its own dedicated action.
 - `cover` — the remote URL (from Spotify or typed manually).
 - `coverFile` — media URL of a locally downloaded copy, or `""`. The frontend's `coverOf()` prefers this over `cover` when present.
 - `tracks` — `[{trackNumber, title, durationMs, spotifyUri}, ...]`, sorted by `trackNumber`. See [Tracks](#tracks) below — like `tags`, this is a flat `JSONField` list, not a separate model.
