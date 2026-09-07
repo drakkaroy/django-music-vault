@@ -2,6 +2,7 @@ import json
 import time
 
 import requests
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
@@ -25,12 +26,23 @@ from .spotify.player import NoActiveDevice, PlayerClient, normalize_context_uri
 from .spotify.service import get_service
 
 
+def _logout_url() -> str:
+    """The logout URL is the host project's to define — see
+    docs/integration.md#4-auth. Defaults to reverse("logout"), which is
+    what `django.contrib.auth.urls` (the documented wiring) registers, but
+    a host using a different auth app (e.g. django-allauth, whose logout
+    URL is named "account_logout") can set MUSIC_VAULT_LOGOUT_URL instead
+    of being forced onto a URL name that may not exist for them."""
+    configured = getattr(settings, "MUSIC_VAULT_LOGOUT_URL", None)
+    return configured if configured else reverse("logout")
+
+
 @login_required
 @ensure_csrf_cookie
 def vault(request):
     """The original vanilla HTML/CSS/JS frontend — kept at /legacy/ for
     reference/rollback now that `vault_react` is the default. See docs/frontend.md."""
-    return render(request, "music_vault/vinylvault.html")
+    return render(request, "music_vault/vinylvault.html", {"logout_url": _logout_url()})
 
 
 @login_required
@@ -38,7 +50,7 @@ def vault(request):
 def vault_react(request):
     """The React/TypeScript rewrite — the default UI. See docs/frontend.md."""
     return render(request, "music_vault/vinylvault_react.html", {
-        "logout_url": reverse("logout"),
+        "logout_url": _logout_url(),
     })
 
 

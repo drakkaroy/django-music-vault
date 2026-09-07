@@ -21,7 +21,7 @@
       <button class="foot-btn" id="exportBtn" title="Download all your data as a JSON backup">⭳ Export</button>
       <button class="foot-btn" id="importBtn" title="Restore from a JSON backup">⭱ Import</button>
       <input type="file" id="importFile" accept=".json" hidden>
-      <form method="post" action="{% url 'logout' %}" style="display:contents">{% csrf_token %}
+      <form method="post" action="{{ logout_url }}" style="display:contents">{% csrf_token %}
         <button class="foot-btn" type="submit" title="Sign out ({{ request.user.username }})">⏻ Logout</button>
       </form>
     </div>
