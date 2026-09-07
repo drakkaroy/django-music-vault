@@ -96,6 +96,18 @@ export interface SpotifyStatus {
   connected: boolean
 }
 
+export type TopAlbumsRange = 'short_term' | 'medium_term' | 'long_term'
+
+export interface SpotifyTopAlbum {
+  spotify_id: string
+  spotify_uri: string
+  name: string
+  artists: string[]
+  cover_url: string
+  external_url: string
+  track_count: number
+}
+
 export interface NowPlaying {
   playing: boolean
   track?: string

@@ -1,18 +1,26 @@
 import { useState } from 'react'
-import { deleteLibrary, importBackup, playAlbum, SPOTIFY_CONNECT_URL, toggleFavorite } from './api/client'
+import {
+  deleteLibrary,
+  importBackup,
+  playAlbum,
+  SPOTIFY_CONNECT_URL,
+  spotifyAlbumDetail,
+  toggleFavorite,
+} from './api/client'
 import { AlbumDetailModal } from './components/AlbumDetailModal'
 import { AlbumFormModal } from './components/AlbumFormModal'
 import { FavoritesView } from './components/FavoritesView'
 import { HomeView } from './components/HomeView'
 import { LibraryFormModal } from './components/LibraryFormModal'
 import { LibraryView } from './components/LibraryView'
+import { PickLibraryModal } from './components/PickLibraryModal'
 import { Sidebar } from './components/Sidebar'
 import { SpotifySearchModal } from './components/SpotifySearchModal'
 import { StatsView } from './components/StatsView'
 import { ToastStack } from './components/ToastStack'
 import { TracklistModal } from './components/TracklistModal'
 import { useVault } from './context/VaultContext'
-import type { Album, Library, SpotifySearchResult } from './types/api'
+import type { Album, Library, SpotifySearchResult, SpotifyTopAlbum } from './types/api'
 
 export type View = 'home' | 'favorites' | 'library' | 'stats'
 
@@ -29,6 +37,7 @@ type ModalState =
   | { type: 'album-form'; libraryId: string; album?: Album; spotify?: SpotifySearchResult }
   | { type: 'album-detail'; library: Library; album: Album }
   | { type: 'tracklist'; album: Album }
+  | { type: 'pick-library'; spotify: SpotifySearchResult }
   | null
 
 function errorMessage(err: unknown): string {
@@ -77,6 +86,19 @@ export default function App() {
         updated.favorite ? `Added "${album.title}" to favorites` : `Removed "${album.title}" from favorites`,
         updated.favorite ? '♥' : '♡',
       )
+    } catch (err) {
+      pushToast(errorMessage(err), '⚠')
+    }
+  }
+
+  const handleAddFromTopAlbums = async (item: SpotifyTopAlbum) => {
+    if (state.libraries.length === 0) {
+      pushToast('Create a library first', '⚠')
+      return
+    }
+    try {
+      const detail = await spotifyAlbumDetail(item.spotify_id)
+      setModal({ type: 'pick-library', spotify: detail })
     } catch (err) {
       pushToast(errorMessage(err), '⚠')
     }
@@ -168,7 +190,14 @@ export default function App() {
               onToggleFavorite={handleToggleFavorite}
             />
           )}
-          {route.view === 'stats' && <StatsView libraries={state.libraries} onOpenAlbum={openAnyAlbum} />}
+          {route.view === 'stats' && (
+            <StatsView
+              libraries={state.libraries}
+              spotifyConnected={spotifyConnected}
+              onOpenAlbum={openAnyAlbum}
+              onAddFromSpotify={handleAddFromTopAlbums}
+            />
+          )}
           {route.view === 'library' && activeLibrary && (
             <LibraryView
               library={activeLibrary}
@@ -198,6 +227,13 @@ export default function App() {
           onUseResult={(result) =>
             setModal({ type: 'album-form', libraryId: modal.libraryId, spotify: result })
           }
+        />
+      )}
+      {modal?.type === 'pick-library' && (
+        <PickLibraryModal
+          libraries={state.libraries}
+          onClose={() => setModal(null)}
+          onPick={(libraryId) => setModal({ type: 'album-form', libraryId, spotify: modal.spotify })}
         />
       )}
       {modal?.type === 'album-form' && (

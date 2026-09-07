@@ -1,15 +1,18 @@
 import { coverOf } from '../lib/cover'
 import { fmtDurationLong } from '../lib/duration'
 import { computeStats } from '../lib/stats'
-import type { Album, Library } from '../types/api'
+import type { Album, Library, SpotifyTopAlbum } from '../types/api'
+import { TopAlbumsSection } from './TopAlbumsSection'
 import { StarRating, StatBar } from './ui'
 
 interface StatsViewProps {
   libraries: Library[]
+  spotifyConnected: boolean
   onOpenAlbum: (album: Album) => void
+  onAddFromSpotify: (item: SpotifyTopAlbum) => void
 }
 
-export function StatsView({ libraries, onOpenAlbum }: StatsViewProps) {
+export function StatsView({ libraries, spotifyConnected, onOpenAlbum, onAddFromSpotify }: StatsViewProps) {
   const stats = computeStats(libraries)
   const genreMax = stats.byGenre[0]?.[1] ?? 0
   const decadeMax = Math.max(0, ...stats.byDecade.map(([, count]) => count))
@@ -48,6 +51,13 @@ export function StatsView({ libraries, onOpenAlbum }: StatsViewProps) {
           <div className="stat-tile-label">Catalogued</div>
         </div>
       </div>
+
+      <TopAlbumsSection
+        libraries={libraries}
+        connected={spotifyConnected}
+        onOpenAlbum={onOpenAlbum}
+        onAdd={onAddFromSpotify}
+      />
 
       {stats.totalAlbums === 0 ? (
         <div className="empty-state">

@@ -310,6 +310,10 @@ checks.push(
   ['stats view: shows the genre breakdown', statsHtml.includes('Alt Rock')],
   ['stats view: shows the top tag with its count', statsHtml.includes('#90s · 1')],
   ['stats view: shows the top-rated album', statsHtml.includes('OK Computer') && statsHtml.includes('Radiohead')],
+  [
+    'stats view: prompts to connect Spotify for "most listened" when disconnected',
+    statsHtml.includes('Most listened on Spotify') && statsHtml.includes('Connect your Spotify account'),
+  ],
 )
 const topRatedItem = window.document.querySelector('[aria-label="Open OK Computer by Radiohead"]')
 if (!topRatedItem) throw new Error('Top-rated album item not found in the statistics view')
