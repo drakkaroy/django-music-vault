@@ -1,6 +1,6 @@
 # VinylVault frontend (React + TypeScript)
 
-React/TypeScript rewrite of the VinylVault UI — feature-complete, served alongside the original vanilla HTML/CSS/JS frontend (`music_vault/static/music_vault/`, `music_vault/templates/music_vault/vinylvault.html`) at a second URL (`/react/`) rather than replacing it yet. See [../docs/frontend.md#react-rewrite](../docs/frontend.md#react-rewrite) for the full picture: why this exists, how it's built into the Django package, and what's still outstanding before it can become the default.
+React/TypeScript rewrite of the VinylVault UI — **the default frontend**, served at `/`. The original vanilla HTML/CSS/JS frontend (`music_vault/static/music_vault/`, `music_vault/templates/music_vault/vinylvault.html`) is kept for reference/rollback at `/legacy/`. See [../docs/frontend.md#react-rewrite](../docs/frontend.md#react-rewrite) for the full picture: why this exists and how it's built into the Django package.
 
 ## Commands
 

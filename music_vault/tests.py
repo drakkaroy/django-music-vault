@@ -53,18 +53,18 @@ class AuthTests(ApiTestCase):
 
     def test_vault_page_renders_for_user(self):
         response = self.client.get(reverse("music_vault:vault"))
-        self.assertContains(response, "VinylVault")
+        self.assertContains(response, "react-app/app.js")
+        self.assertContains(response, "MV_LOGOUT_URL")
 
-    def test_vault_react_page_redirects_anonymous_to_login(self):
+    def test_vault_legacy_page_redirects_anonymous_to_login(self):
         self.client.logout()
-        response = self.client.get(reverse("music_vault:vault-react"))
+        response = self.client.get(reverse("music_vault:vault-legacy"))
         self.assertEqual(response.status_code, 302)
         self.assertIn("login", response.url)
 
-    def test_vault_react_page_renders_for_user(self):
-        response = self.client.get(reverse("music_vault:vault-react"))
-        self.assertContains(response, "react-app/app.js")
-        self.assertContains(response, "MV_LOGOUT_URL")
+    def test_vault_legacy_page_renders_for_user(self):
+        response = self.client.get(reverse("music_vault:vault-legacy"))
+        self.assertContains(response, "music_vault/script.js")
 
 
 class StateTests(ApiTestCase):

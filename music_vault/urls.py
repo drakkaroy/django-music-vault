@@ -5,11 +5,10 @@ from . import views
 app_name = "music_vault"
 
 urlpatterns = [
-    path("", views.vault, name="vault"),
-    # React/TypeScript rewrite, feature-complete but served alongside the
-    # original vanilla frontend above, not yet the default — see
-    # docs/frontend.md#react-rewrite.
-    path("react/", views.vault_react, name="vault-react"),
+    # React/TypeScript rewrite is now the default UI — see docs/frontend.md#react-rewrite.
+    path("", views.vault_react, name="vault"),
+    # Original vanilla frontend, kept for reference/rollback.
+    path("legacy/", views.vault, name="vault-legacy"),
     path("api/state/", views.StateView.as_view(), name="api-state"),
     path("api/libraries/", views.LibraryListView.as_view(), name="api-libraries"),
     path("api/libraries/<int:pk>/", views.LibraryDetailView.as_view(), name="api-library"),

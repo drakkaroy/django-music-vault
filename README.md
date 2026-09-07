@@ -1,6 +1,6 @@
 # 🎵 django-music-vault
 
-Reusable Django app for cataloging your music collection: libraries, albums, unlimited tags, favorites, and Spotify metadata autofill. Ships with the **VinylVault** frontend (vanilla HTML/CSS/JS, dark theme) ready to use — and also runs standalone: clone the repo, migrate, and your vault is up.
+Reusable Django app for cataloging your music collection: libraries, albums, unlimited tags, favorites, and Spotify metadata autofill. Ships with the **VinylVault** frontend (React + TypeScript, dark theme) ready to use — and also runs standalone: clone the repo, migrate, and your vault is up. The original vanilla HTML/CSS/JS frontend is still bundled at `/legacy/` for reference/rollback.
 
 📚 **[Full documentation](docs/index.md)** — architecture, backend, frontend, configuration, deployment.
 
