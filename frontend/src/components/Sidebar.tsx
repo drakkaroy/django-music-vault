@@ -75,29 +75,41 @@ export function Sidebar({
         >
           {spotifyConnected ? '🎧 Disconnect Spotify' : '🎧 Connect Spotify'}
         </FootButton>
-        <FootButton onClick={onExport} title="Download all your data as a JSON backup">
-          ⭳ Export
-        </FootButton>
-        <FootButton onClick={() => importInputRef.current?.click()} title="Restore from a JSON backup">
-          ⭱ Import
-        </FootButton>
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".json"
-          hidden
-          onChange={(e) => {
-            const file = e.target.files?.[0]
-            if (file) onImportFile(file)
-            e.target.value = ''
-          }}
-        />
-        <form method="post" action={LOGOUT_URL} style={{ display: 'contents' }}>
-          <input type="hidden" name="csrfmiddlewaretoken" value={getCookie('csrftoken')} />
-          <FootButton type="submit" title="Sign out">
-            ⏻ Logout
-          </FootButton>
-        </form>
+        <div className="foot-row">
+          <div className="foot-stack">
+            <FootButton
+              className="foot-btn-sm"
+              onClick={onExport}
+              title="Download all your data as a JSON backup"
+            >
+              ⭳ Export
+            </FootButton>
+            <FootButton
+              className="foot-btn-sm"
+              onClick={() => importInputRef.current?.click()}
+              title="Restore from a JSON backup"
+            >
+              ⭱ Import
+            </FootButton>
+            <input
+              ref={importInputRef}
+              type="file"
+              accept=".json"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                if (file) onImportFile(file)
+                e.target.value = ''
+              }}
+            />
+          </div>
+          <form method="post" action={LOGOUT_URL} style={{ display: 'contents' }}>
+            <input type="hidden" name="csrfmiddlewaretoken" value={getCookie('csrftoken')} />
+            <FootButton type="submit" title="Sign out">
+              ⏻ Logout
+            </FootButton>
+          </form>
+        </div>
       </div>
     </nav>
   )

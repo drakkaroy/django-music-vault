@@ -205,7 +205,19 @@ img {
   border-top: 1px solid var(--border);
   padding-top: 12px;
   display: flex;
+  flex-direction: column;
   gap: 8px;
+}
+.foot-row {
+  display: flex;
+  gap: 8px;
+}
+.foot-stack {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
 .foot-btn {
   flex: 1;
@@ -215,6 +227,10 @@ img {
   border-radius: 8px;
   border: 1px solid var(--border);
   transition: all 0.18s;
+}
+.foot-btn-sm {
+  font-size: 11px;
+  padding: 5px;
 }
 .foot-btn:hover {
   color: var(--text);
