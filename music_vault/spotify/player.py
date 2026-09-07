@@ -49,6 +49,18 @@ class PlayerClient:
         response.raise_for_status()
         return response.json().get("devices", [])
 
+    def top_tracks(self, time_range: str = "medium_term", limit: int = 50) -> list[dict]:
+        """Raw items from "Get User's Top Items" (tracks) — Spotify has no
+        top-albums endpoint, so callers derive that by grouping these."""
+        response = requests.get(
+            f"{API_BASE}/me/top/tracks",
+            params={"time_range": time_range, "limit": limit},
+            headers=self._headers(),
+            timeout=10,
+        )
+        response.raise_for_status()
+        return response.json().get("items", [])
+
     def currently_playing(self) -> dict | None:
         """Raw "Get Playback State" response, or None when Spotify has
         nothing to report (no active device, or nothing loaded)."""
