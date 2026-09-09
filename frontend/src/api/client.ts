@@ -18,6 +18,10 @@ declare global {
     // usually under accounts/), not under music_vault's own url namespace,
     // so the Django template injects the real one rather than us guessing it.
     MV_LOGOUT_URL?: string
+    // Set only by vinylvault_public.html (the public/, read-only bundle) —
+    // see PublicApp.tsx.
+    MV_PUBLIC_USERNAME?: string
+    MV_PUBLIC_SLUG?: string
   }
 }
 
@@ -85,6 +89,11 @@ export const playAlbum = (id: string, trackUri?: string) =>
   api<{ playing: true }>(`albums/${id}/play/`, 'POST', trackUri ? { trackUri } : undefined)
 
 export const importBackup = (data: VaultState) => api<VaultState>('import/', 'POST', data)
+
+/** The one endpoint anonymous visitors can reach — see PublicApp.tsx and
+ * docs/backend.md#public-library-sharing. GET-only, no session required. */
+export const getPublicLibrary = (username: string, slug: string) =>
+  api<{ library: Library }>(`public/${encodeURIComponent(username)}/${encodeURIComponent(slug)}/`)
 
 export const spotifySearch = (query: string, limit = 20) =>
   api<{ results: SpotifySearchResult[] }>(`spotify/search/?q=${encodeURIComponent(query)}&limit=${limit}`)

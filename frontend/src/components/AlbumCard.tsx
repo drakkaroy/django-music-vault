@@ -12,9 +12,13 @@ interface AlbumCardProps {
   /** Covers view: just the artwork, no title/artist/year below it — hover
    * still reveals play/favorite the same as the detailed view. */
   coversOnly?: boolean
+  /** Public share page: no favoriting (there's no visitor account to
+   * favorite for). `onPlay` still fires — the public page just wires it to
+   * open the album on open.spotify.com instead of calling the Connect API. */
+  readOnly?: boolean
   onOpen: () => void
   onPlay: () => void
-  onToggleFavorite: () => void
+  onToggleFavorite?: () => void
 }
 
 export function AlbumCard({
@@ -22,6 +26,7 @@ export function AlbumCard({
   libraryName,
   index,
   coversOnly,
+  readOnly,
   onOpen,
   onPlay,
   onToggleFavorite,
@@ -49,12 +54,17 @@ export function AlbumCard({
           </span>
         )}
         <div className="cover-overlay">
-          <PlayButton label={`Play ${album.title} on Spotify`} onClick={onPlay} />
-          <FavButton
-            active={album.favorite}
-            label={album.favorite ? 'Remove from favorites' : 'Add to favorites'}
-            onClick={onToggleFavorite}
+          <PlayButton
+            label={readOnly ? `Open ${album.title} on Spotify` : `Play ${album.title} on Spotify`}
+            onClick={onPlay}
           />
+          {!readOnly && onToggleFavorite && (
+            <FavButton
+              active={album.favorite}
+              label={album.favorite ? 'Remove from favorites' : 'Add to favorites'}
+              onClick={onToggleFavorite}
+            />
+          )}
         </div>
       </div>
       {!coversOnly && (

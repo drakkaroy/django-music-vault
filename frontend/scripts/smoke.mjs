@@ -26,12 +26,15 @@ window.URL.revokeObjectURL = () => {}
 Object.defineProperty(window.document, 'cookie', { value: 'csrftoken=fake-csrf-token', writable: true })
 
 const fakeState = {
+  username: 'drakksmoke',
   libraries: [
     {
       id: '1',
       name: 'Rock',
       description: 'Guitars',
       color: '#e0654a',
+      slug: 'rock',
+      isPublic: false,
       createdAt: Date.now(),
       albums: [
         {
@@ -63,6 +66,13 @@ function json(data, status = 200) {
 let nextLibraryId = 2
 let nextAlbumId = 100
 let lastAlbumCreatePayload = null
+let lastLibraryCreatePayload = null
+const slugifyMock = (s) =>
+  s
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
 window.fetch = async (url, options = {}) => {
   const path = String(url)
   const method = options.method || 'GET'
@@ -114,11 +124,14 @@ window.fetch = async (url, options = {}) => {
   }
   if (path.endsWith('/api/libraries/') && method === 'POST') {
     const body = JSON.parse(options.body)
+    lastLibraryCreatePayload = body
     const created = {
       id: String(nextLibraryId++),
       name: body.name,
       description: body.description || '',
       color: body.color || '#e0654a',
+      slug: slugifyMock(body.name) || 'library',
+      isPublic: Boolean(body.isPublic),
       createdAt: Date.now(),
       albums: [],
     }
@@ -344,6 +357,16 @@ await new Promise((r) => setTimeout(r, 50))
 const nameInput = window.document.querySelector('#l-name')
 if (!nameInput) throw new Error('Library form modal did not open (no #l-name input found)')
 setInputValue(nameInput, 'Jazz Nights')
+
+// Public-sharing toggle: check it, confirm the share-link row only appears
+// once checked (there's no library yet in create mode, so no link to show
+// — that only appears when editing an existing, already-created library).
+const publicCheckbox = window.document.querySelector('.checkbox-label input[type="checkbox"]')
+if (!publicCheckbox) throw new Error('Library form modal: "Make this library public" checkbox not found')
+checks.push(['library form: no share link shown yet in create mode', !window.document.querySelector('.share-row')])
+publicCheckbox.click()
+await new Promise((r) => setTimeout(r, 20))
+
 const createBtn = [...window.document.querySelectorAll('button')].find((b) => b.textContent === 'Create library')
 if (!createBtn) throw new Error('Could not find the "Create library" submit button')
 createBtn.click()
@@ -353,7 +376,23 @@ checks.push(
   ['library form: modal closes after creating', !window.document.querySelector('.modal-backdrop')],
   ['library form: navigates into the new library', afterCreateHtml.includes('0 of 0 albums')],
   ['library form: new library appears in the sidebar', afterCreateHtml.includes('Jazz Nights')],
+  ['library form: isPublic was included in the actual POST payload', lastLibraryCreatePayload?.isPublic === true],
+  ['library form: toast announces the public share link', afterCreateHtml.includes('public at') && afterCreateHtml.includes('/drakksmoke/jazz-nights/')],
 )
+
+// Reopen the same (now public) library's edit modal and check the share
+// link row renders this time, with the right URL.
+const editLibraryBtn = window.document.querySelector('[aria-label="Edit library"]')
+if (!editLibraryBtn) throw new Error('"Edit library" icon button not found')
+editLibraryBtn.click()
+await new Promise((r) => setTimeout(r, 50))
+const shareInput = window.document.querySelector('.share-row input')
+checks.push([
+  'library form (edit, public library): share link input shows the right URL',
+  shareInput?.value?.includes('/drakksmoke/jazz-nights/'),
+])
+clickButtonContaining('Cancel')
+await new Promise((r) => setTimeout(r, 30))
 
 // Add an album to the (now current) "Jazz Nights" library through the real
 // form: required fields, one tag, one track — then check both the DOM and
@@ -487,6 +526,150 @@ checks.push(
   ['import: navigates home after restoring', afterImportHtml.includes('Your Libraries')],
   ['import: restored library appears', afterImportHtml.includes('Restored Library')],
 )
+
+// --- public.js: the read-only public share page (PublicApp.tsx) ---
+// Separate bundle, separate jsdom window/global-swap — mounts fresh rather
+// than reusing the app.js session above.
+const PUBLIC_JS = '../music_vault/static/music_vault/react-app/public.js'
+
+const publicDom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
+  url: 'http://127.0.0.1:8899/drakk/rock/',
+  runScripts: 'dangerously',
+  resources: 'usable',
+})
+const publicWindow = publicDom.window
+publicWindow.MV_BASE = '/'
+publicWindow.MV_PUBLIC_USERNAME = 'drakk'
+publicWindow.MV_PUBLIC_SLUG = 'rock'
+const openedUrls = []
+publicWindow.open = (url) => {
+  openedUrls.push(url)
+  return null
+}
+
+const publicLibrary = {
+  id: '1',
+  name: 'Rock',
+  description: 'Guitars',
+  color: '#e0654a',
+  slug: 'rock',
+  isPublic: true,
+  createdAt: Date.now(),
+  albums: [
+    {
+      id: '10',
+      title: 'OK Computer',
+      artist: 'Radiohead',
+      year: 1997,
+      genre: 'Alt Rock',
+      country: 'UK',
+      label: '',
+      cover: '',
+      coverFile: '',
+      spotifyUri: 'spotify:album:xyz789',
+      tags: ['90s'],
+      tracks: [{ trackNumber: 1, title: 'Airbag', durationMs: 284000, spotifyUri: 'spotify:track:abc111' }],
+      favorite: true,
+      rating: 5,
+      addedAt: Date.now(),
+    },
+  ],
+}
+publicWindow.fetch = async (url) => {
+  const path = String(url)
+  if (path.includes('/api/public/drakk/rock/')) return json({ library: publicLibrary })
+  if (path.includes('/api/public/')) return json({ error: 'Library not found' }, 404)
+  throw new Error(`Unmocked fetch in public smoke test: ${path}`)
+}
+
+for (const key of ['window', 'document', 'navigator', 'location', 'history', 'fetch', 'HTMLElement', 'customElements', 'MutationObserver']) {
+  if (!(key in publicWindow)) continue
+  try {
+    globalThis[key] = publicWindow[key]
+  } catch {
+    /* Node already defines some of these (e.g. navigator) as read-only globals */
+  }
+}
+
+let publicCode
+try {
+  publicCode = await readFile(PUBLIC_JS, 'utf8')
+} catch {
+  console.error(`Could not read ${PUBLIC_JS} — run "npm run build" first.`)
+  process.exit(1)
+}
+// data: URI module imports are cached by content, and public.js is
+// imported twice below (once per jsdom window) — a cache-busting comment
+// keeps the second import from silently reusing the first's cached module
+// (and skipping its top-level createRoot().render() call as a result).
+function importBundle(code, tag) {
+  return import(`data:text/javascript;base64,${Buffer.from(`${code}\n// ${tag}`, 'utf8').toString('base64')}`)
+}
+
+await importBundle(publicCode, 'mount:drakk/rock')
+await new Promise((r) => setTimeout(r, 200))
+
+const publicHtml = publicWindow.document.getElementById('root').innerHTML
+checks.push(
+  ['public page: shows the byline with the owner username', publicHtml.includes('Shared by @drakk')],
+  ['public page: shows the library name and description', publicHtml.includes('Rock') && publicHtml.includes('Guitars')],
+  ['public page: renders the album card', publicHtml.includes('OK Computer') && publicHtml.includes('Radiohead')],
+  ['public page: has no "Add album" / edit / delete controls', !publicHtml.includes('＋ Add album') && !publicHtml.includes('aria-label="Edit library"') && !publicHtml.includes('aria-label="Delete library"')],
+  ['public page: has no interactive favorite button (read-only)', !publicHtml.includes('Add to favorites') && !publicHtml.includes('Remove from favorites')],
+  ['public page: Play button is relabeled "Open ... on Spotify"', publicHtml.includes('Open OK Computer on Spotify')],
+)
+
+const publicPlayBtn = publicWindow.document.querySelector('[aria-label="Open OK Computer on Spotify"]')
+if (!publicPlayBtn) throw new Error('Public page: card Play/Open button not found')
+publicPlayBtn.click()
+checks.push(['public page: clicking the card Play button opens the album on open.spotify.com', openedUrls.includes('https://open.spotify.com/album/xyz789')])
+
+const publicCard = publicWindow.document.querySelector('[aria-label="OK Computer by Radiohead"]')
+if (!publicCard) throw new Error('Public page: album card not found')
+publicCard.click()
+await new Promise((r) => setTimeout(r, 50))
+const publicDetailHtml = publicWindow.document.getElementById('root').innerHTML
+checks.push(
+  ['public page detail modal: shows the album title as a heading', publicDetailHtml.includes('<h2>OK Computer</h2>')],
+  ['public page detail modal: shows Open-on-Spotify and Tracklist, not Edit/Delete/Favorite', ['▶ Open on Spotify', '☰ Tracklist'].every((s) => publicDetailHtml.includes(s)) && !['Edit', 'Delete', 'Favorite'].some((s) => publicDetailHtml.includes(s))],
+)
+
+const tracklistBtn = [...publicWindow.document.querySelectorAll('button')].find((b) => b.textContent?.includes('Tracklist'))
+if (!tracklistBtn) throw new Error('Public page: Tracklist button not found')
+tracklistBtn.click()
+await new Promise((r) => setTimeout(r, 50))
+const publicTracklistHtml = publicWindow.document.getElementById('root').innerHTML
+checks.push(['public page: tracklist modal shows the track', publicTracklistHtml.includes('Airbag') && publicTracklistHtml.includes('4:44')])
+
+const trackPlayBtn = publicWindow.document.querySelector('.tr-play')
+if (!trackPlayBtn) throw new Error('Public page: track play button not found')
+trackPlayBtn.click()
+checks.push(['public page: clicking a track opens it on open.spotify.com', openedUrls.includes('https://open.spotify.com/track/abc111')])
+
+// A second mount, for a library that doesn't exist (or isn't public) —
+// the API 404s and the page should show a "not found" state, not crash.
+const notFoundDom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
+  url: 'http://127.0.0.1:8899/nobody/ghost/',
+  runScripts: 'dangerously',
+  resources: 'usable',
+})
+const notFoundWindow = notFoundDom.window
+notFoundWindow.MV_BASE = '/'
+notFoundWindow.MV_PUBLIC_USERNAME = 'nobody'
+notFoundWindow.MV_PUBLIC_SLUG = 'ghost'
+notFoundWindow.fetch = async () => json({ error: 'Library not found' }, 404)
+for (const key of ['window', 'document', 'navigator', 'location', 'history', 'fetch', 'HTMLElement', 'customElements', 'MutationObserver']) {
+  if (!(key in notFoundWindow)) continue
+  try {
+    globalThis[key] = notFoundWindow[key]
+  } catch {
+    /* Node already defines some of these (e.g. navigator) as read-only globals */
+  }
+}
+await importBundle(publicCode, 'mount:nobody/ghost')
+await new Promise((r) => setTimeout(r, 200))
+const notFoundHtml = notFoundWindow.document.getElementById('root').innerHTML
+checks.push(['public page: missing/private library shows a not-found state', notFoundHtml.includes('not found')])
 
 let failed = false
 for (const [label, ok] of checks) {

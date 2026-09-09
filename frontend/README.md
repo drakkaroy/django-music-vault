@@ -8,7 +8,12 @@ React/TypeScript rewrite of the VinylVault UI — **the default frontend**, serv
 npm install
 npm run dev      # standalone dev server with HMR — proxies /api, /accounts, /spotify to a real
                   # Django dev server on :8000 (DB_ENGINE=sqlite3 python manage.py runserver, from the repo root)
-npm run build     # tsc -b && vite build — outputs into ../music_vault/static/music_vault/react-app/
+                  # serves the main app at / and the public share page at /public.html (edit the
+                  # username/slug hardcoded in public.html to point at a library seeded locally)
+npm run build     # tsc -b, then two separate `vite build` runs (--mode app, --mode public) — see
+                  # ../docs/frontend.md#public-library-sharing for why it's two builds, not one —
+                  # outputs app.js/app.css + public.js/public.css into
+                  # ../music_vault/static/music_vault/react-app/
 npm run lint      # oxlint
 npm run format    # prettier --write, all of src/ (ts/tsx/css) + index.html — run before every commit
 npm run format:check   # same, but just checks (no writes) — CI-friendly

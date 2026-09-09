@@ -13,6 +13,7 @@ Reusable Django app for cataloging your music collection: libraries, albums, unl
 - **JSON REST API** (no extra dependencies, just Django) with session auth; each user only sees their own data.
 - **Spotify search/autofill**: the "Add album" flow searches Spotify (by artist or album), shows a quick preview, prefills the form and downloads the cover art to local storage (client-credentials, no user OAuth needed).
 - **Spotify Connect playback**: each user can link their own Spotify account (OAuth); the ▶ Play button then starts the album on whichever of their devices already has Spotify open.
+- **Public library sharing**: opt a library in and it's browsable read-only by anyone with the link, at `/<your-username>/<library-name>/` — no login, no editing, just filters/sort/tracklists and a link to open each album on Spotify.
 - No hardcoded database: uses the host project's `default` connection, or whatever you define with `DATABASE_ROUTERS`.
 
 ## Quickstart (standalone)
@@ -65,6 +66,7 @@ python manage.py test music_vault
 - [x] Real playback via Spotify Connect (per-user OAuth)
 - [x] Tracklists (imported or manual) with per-track playback
 - [x] Star ratings and collection statistics
+- [x] Public, read-only library sharing (no login required)
 
 ## License
 

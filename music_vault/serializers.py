@@ -45,6 +45,8 @@ def library_to_dict(library, albums=None):
         "name": library.name,
         "description": library.description,
         "color": library.color,
+        "slug": library.slug,
+        "isPublic": library.is_public,
         "createdAt": _epoch_ms(library.created_at),
         "albums": [album_to_dict(a) for a in albums],
     }
@@ -125,8 +127,14 @@ def clean_library_payload(data):
     name = str(data.get("name", "")).strip()
     if not name:
         return None, "Library name is required"
-    return {
+    fields = {
         "name": name[:200],
         "description": str(data.get("description", "")).strip(),
         "color": str(data.get("color", "") or "#e0654a").strip()[:7],
-    }, None
+    }
+    # Only touched when the caller explicitly sends it, so a plain rename
+    # (which doesn't include isPublic) never silently flips a public
+    # library back to private.
+    if "isPublic" in data:
+        fields["is_public"] = bool(data["isPublic"])
+    return fields, None

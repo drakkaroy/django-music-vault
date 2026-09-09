@@ -3,3 +3,24 @@
   gap: 10px;
   flex-wrap: wrap;
 }
+.checkbox-label {
+  display: flex !important;
+  align-items: center;
+  gap: 8px;
+  text-transform: none !important;
+  font-size: 14px !important;
+  color: var(--text) !important;
+  cursor: pointer;
+}
+.checkbox-label input {
+  width: auto;
+}
+.share-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+.share-row input {
+  flex: 1;
+  color: var(--text-dim);
+}

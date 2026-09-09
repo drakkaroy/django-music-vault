@@ -38,11 +38,14 @@ export interface Library {
   name: string
   description: string
   color: string
+  slug: string
+  isPublic: boolean
   createdAt: number
   albums: Album[]
 }
 
 export interface VaultState {
+  username: string
   libraries: Library[]
 }
 
@@ -65,6 +68,7 @@ export interface LibraryPayload {
   name: string
   description?: string
   color?: string
+  isPublic?: boolean
 }
 
 // --- Spotify (client-credentials search/autofill) — snake_case, Spotify's

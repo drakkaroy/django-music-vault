@@ -13,9 +13,11 @@ interface AlbumGridProps {
   /** Favorites view shows which library each album belongs to; the library
    * view doesn't need to (you're already inside one). */
   libraryNameFor?: (album: Album) => string
+  /** Public share page: no favoriting — see AlbumCard's readOnly prop. */
+  readOnly?: boolean
   onOpen: (album: Album) => void
   onPlay: (album: Album) => void
-  onToggleFavorite: (album: Album) => void
+  onToggleFavorite?: (album: Album) => void
 }
 
 export function AlbumGrid({
@@ -23,6 +25,7 @@ export function AlbumGrid({
   sort,
   viewMode = 'detailed',
   libraryNameFor,
+  readOnly,
   onOpen,
   onPlay,
   onToggleFavorite,
@@ -45,10 +48,11 @@ export function AlbumGrid({
       album={album}
       index={i}
       coversOnly={covers}
+      readOnly={readOnly}
       libraryName={libraryNameFor?.(album)}
       onOpen={() => onOpen(album)}
       onPlay={() => onPlay(album)}
-      onToggleFavorite={() => onToggleFavorite(album)}
+      onToggleFavorite={onToggleFavorite ? () => onToggleFavorite(album) : undefined}
     />
   )
 

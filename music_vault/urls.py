@@ -16,6 +16,11 @@ urlpatterns = [
     path("api/albums/<int:pk>/", views.AlbumDetailView.as_view(), name="api-album"),
     path("api/albums/<int:pk>/favorite/", views.AlbumFavoriteView.as_view(), name="api-album-favorite"),
     path("api/import/", views.ImportView.as_view(), name="api-import"),
+    path(
+        "api/public/<str:username>/<slug:library_slug>/",
+        views.PublicLibraryView.as_view(),
+        name="api-public-library",
+    ),
     path("api/spotify/search/", views.SpotifySearchView.as_view(), name="api-spotify-search"),
     path("api/spotify/albums/<str:spotify_id>/", views.SpotifyAlbumView.as_view(), name="api-spotify-album"),
     path("api/spotify/status/", views.SpotifyStatusView.as_view(), name="api-spotify-status"),
@@ -26,4 +31,7 @@ urlpatterns = [
     # Real browser redirects (OAuth), not JSON — kept outside api/
     path("spotify/connect/", views.spotify_connect, name="spotify-connect"),
     path("spotify/callback/", views.spotify_callback, name="spotify-callback"),
+    # Public library share pages — must stay last: a username equal to
+    # "api", "legacy", or "spotify" would otherwise shadow those routes.
+    path("<str:username>/<slug:library_slug>/", views.public_library, name="public-library"),
 ]

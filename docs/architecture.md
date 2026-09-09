@@ -25,7 +25,7 @@ This is what makes it installable in an unrelated Django project via pip. A cons
 
 ```
 User (host project's AUTH_USER_MODEL)
-  └─ Library (owner FK)            name, description, color
+  └─ Library (owner FK)            name, description, color, slug, is_public
        └─ Album (library FK)       title, artist, year, genre, country, label,
                                     cover_url, cover_file, spotify_uri, tags[], tracks[], favorite
   └─ SpotifyAccount (user OneToOne)  access_token, refresh_token, expires_at, scope
@@ -33,10 +33,11 @@ User (host project's AUTH_USER_MODEL)
 
 - `Library`/`Album` are a flat, denormalized mirror of what the original VinylVault frontend kept in `localStorage` — no separate `Genre`/`Tag`/`Track` tables, `tags` and `tracks` are just `JSONField` lists. That's deliberate: this app's job is to be the *persistence layer* for an existing UI's exact data shape, not to redesign the domain model. See [backend.md](backend.md#json-contract) and [backend.md#tracks](backend.md#tracks) for why this also constrains the API's JSON shape.
 - `SpotifyAccount` is unrelated to `Library`/`Album` — it exists only so the ▶ Play button can control playback on the user's own Spotify Connect devices. See [backend.md](backend.md#spotify-integrations).
+- `Library.slug` is auto-generated once from `name` at creation (`Library.save()`), unique per owner (not globally), and never changes on rename — it's the stable half of a public share URL. `Library.is_public` is the opt-in flag that makes that URL actually reachable. See [backend.md#public-library-sharing](backend.md#public-library-sharing).
 
 ## Request flow
 
-Every page and API request requires an authenticated session (standard Django `LOGIN_URL` / session auth). There's no DRF: the single page view (`vault`) renders the VinylVault shell once; everything after that is the frontend calling the JSON API (`ApiView` subclasses in `views.py`) and re-rendering client-side. See [frontend.md](frontend.md) for how the JS drives this.
+Every page and API request requires an authenticated session (standard Django `LOGIN_URL` / session auth) — **except the public library share page and its one read-only API endpoint**, which are reachable by anyone with the link. There's no DRF: the single page view (`vault`) renders the VinylVault shell once; everything after that is the frontend calling the JSON API (`ApiView` subclasses in `views.py`) and re-rendering client-side. See [frontend.md](frontend.md) for how the JS drives this, and [backend.md#public-library-sharing](backend.md#public-library-sharing) for the anonymous path.
 
 ```
 Browser (script.js)
@@ -46,6 +47,10 @@ Browser (script.js)
   → GET  /api/spotify/...     client-credentials search/autofill (no user auth with Spotify)
   → GET  /spotify/connect/    real browser redirect into Spotify's OAuth consent screen
   → POST /api/albums/<id>/play/   Spotify Connect playback, needs a linked SpotifyAccount
+
+Anonymous browser (public share page)
+  → GET  /<username>/<slug>/           public page shell — no auth, always 200
+  → GET  /api/public/<username>/<slug>/  read-only JSON, 404 unless is_public=True
 ```
 
 Ownership is enforced per-request, not via row-level DB permissions: `ApiView.get_library`/`get_album` always filter by `owner=request.user` (or `library__owner=request.user`), so a mismatched id 404s instead of leaking another user's row.
