@@ -1,0 +1,15 @@
+.public-shell {
+  max-width: 1500px;
+  margin: 0 auto;
+  padding: 28px 34px 80px;
+}
+.public-byline {
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 18px;
+}
+@media (max-width: 820px) {
+  .public-shell {
+    padding: 20px 16px 70px;
+  }
+}

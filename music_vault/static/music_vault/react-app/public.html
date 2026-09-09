@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Music Vault — Public library (dev)</title>
+    <script type="module" crossorigin src="/public.js"></script>
+    <link rel="stylesheet" crossorigin href="/public.css">
+  </head>
+  <body>
+    <div id="root"></div>
+    <!-- In production these are set by the Django template instead
+         (music_vault/templates/music_vault/vinylvault_public.html).
+         Edit the username/slug below to point at a public library seeded
+         in your local dev database. -->
+    <script>
+      window.MV_BASE = '/'
+      window.MV_PUBLIC_USERNAME = 'drakk'
+      window.MV_PUBLIC_SLUG = 'rock'
+    </script>
+  </body>
+</html>

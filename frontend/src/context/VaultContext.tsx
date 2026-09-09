@@ -35,7 +35,7 @@ function readSpotifyRedirectStatus(): string | null {
 }
 
 export function VaultProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<VaultState>({ libraries: [] })
+  const [state, setState] = useState<VaultState>({ username: '', libraries: [] })
   const [loading, setLoading] = useState(true)
   const [spotifyConnected, setSpotifyConnected] = useState(false)
   const [toasts, setToasts] = useState<Toast[]>([])

@@ -11,9 +11,10 @@ class AlbumInline(admin.TabularInline):
 
 @admin.register(Library)
 class LibraryAdmin(admin.ModelAdmin):
-    list_display = ("name", "owner", "color", "created_at")
-    list_filter = ("owner",)
+    list_display = ("name", "owner", "slug", "is_public", "color", "created_at")
+    list_filter = ("owner", "is_public")
     search_fields = ("name", "description")
+    readonly_fields = ("slug",)
     inlines = [AlbumInline]
 
 

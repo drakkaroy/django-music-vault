@@ -101,6 +101,10 @@ class StateTests(ApiTestCase):
         self.assertEqual(album["artist"], "Radiohead")
         self.assertIsInstance(album["addedAt"], int)
 
+    def test_state_includes_username(self):
+        data = self.client.get(reverse("music_vault:api-state")).json()
+        self.assertEqual(data["username"], "drakk")
+
 
 class LibraryTests(ApiTestCase):
     def test_create_update_delete_library(self):
@@ -131,6 +135,114 @@ class LibraryTests(ApiTestCase):
         response = self.client.delete(reverse("music_vault:api-library", args=[theirs.pk]))
         self.assertEqual(response.status_code, 404)
         self.assertTrue(Library.objects.filter(pk=theirs.pk).exists())
+
+
+class LibrarySlugAndPublicSharingTests(ApiTestCase):
+    """See docs/backend.md#public-library-sharing."""
+
+    def test_slug_generated_from_name_on_create(self):
+        response = self.post_json(reverse("music_vault:api-libraries"), {"name": "Heavy Metal!"})
+        self.assertEqual(response.json()["slug"], "heavy-metal")
+
+    def test_duplicate_names_get_unique_slugs_per_owner(self):
+        first = self.post_json(reverse("music_vault:api-libraries"), {"name": "Rock"}).json()
+        second = self.post_json(reverse("music_vault:api-libraries"), {"name": "Rock"}).json()
+        self.assertEqual(first["slug"], "rock")
+        self.assertEqual(second["slug"], "rock-2")
+
+    def test_same_name_different_owners_can_share_a_slug(self):
+        mine = Library.objects.create(owner=self.user, name="Metal")
+        theirs = Library.objects.create(owner=self.other, name="Metal")
+        self.assertEqual(mine.slug, "metal")
+        self.assertEqual(theirs.slug, "metal")
+
+    def test_slug_is_stable_across_rename(self):
+        created = self.post_json(reverse("music_vault:api-libraries"), {"name": "Jazz"}).json()
+        self.put_json(
+            reverse("music_vault:api-library", args=[created["id"]]),
+            {"name": "Jazz & Blues", "description": "", "color": "#4a90e0"},
+        )
+        self.assertEqual(Library.objects.get(pk=created["id"]).slug, "jazz")
+
+    def test_library_is_private_by_default(self):
+        created = self.post_json(reverse("music_vault:api-libraries"), {"name": "Rock"}).json()
+        self.assertFalse(created["isPublic"])
+
+    def test_create_library_can_opt_in_to_public(self):
+        created = self.post_json(reverse("music_vault:api-libraries"), {"name": "Rock", "isPublic": True}).json()
+        self.assertTrue(created["isPublic"])
+
+    def test_update_can_toggle_public(self):
+        created = self.post_json(reverse("music_vault:api-libraries"), {"name": "Rock"}).json()
+        url = reverse("music_vault:api-library", args=[created["id"]])
+
+        response = self.put_json(url, {"name": "Rock", "description": "", "color": "#e0654a", "isPublic": True})
+        self.assertTrue(response.json()["isPublic"])
+        self.assertTrue(Library.objects.get(pk=created["id"]).is_public)
+
+    def test_update_without_is_public_key_does_not_reset_it(self):
+        """A plain rename (the frontend always sends isPublic today, but a
+        future/third-party API client might not) must never silently flip a
+        public library back to private."""
+        created = self.post_json(reverse("music_vault:api-libraries"), {"name": "Rock", "isPublic": True}).json()
+        url = reverse("music_vault:api-library", args=[created["id"]])
+
+        self.put_json(url, {"name": "Rock (renamed)", "description": "", "color": "#e0654a"})
+        self.assertTrue(Library.objects.get(pk=created["id"]).is_public)
+
+
+class PublicLibraryViewTests(ApiTestCase):
+    """See docs/backend.md#public-library-sharing."""
+
+    def public_url(self, username, slug):
+        return reverse("music_vault:api-public-library", args=[username, slug])
+
+    def test_returns_public_library_to_anonymous_visitor(self):
+        library = Library.objects.create(owner=self.user, name="Metal", is_public=True)
+        make_album(library)
+        self.client.logout()
+
+        response = self.client.get(self.public_url("drakk", library.slug))
+        self.assertEqual(response.status_code, 200)
+        data = response.json()["library"]
+        self.assertEqual(data["name"], "Metal")
+        self.assertEqual(data["id"], str(library.pk))
+        self.assertTrue(data["isPublic"])
+        self.assertEqual(data["albums"][0]["artist"], "Radiohead")
+
+    def test_404_for_private_library(self):
+        library = Library.objects.create(owner=self.user, name="Metal", is_public=False)
+        self.client.logout()
+        response = self.client.get(self.public_url("drakk", library.slug))
+        self.assertEqual(response.status_code, 404)
+
+    def test_404_for_unknown_username_or_slug(self):
+        self.client.logout()
+        response = self.client.get(self.public_url("nobody", "ghost"))
+        self.assertEqual(response.status_code, 404)
+
+    def test_only_get_is_supported(self):
+        """No write path exists on the public endpoint — see ApiView vs.
+        plain View in views.py."""
+        library = Library.objects.create(owner=self.user, name="Metal", is_public=True)
+        self.client.logout()
+        response = self.client.post(self.public_url("drakk", library.slug))
+        self.assertEqual(response.status_code, 405)
+
+    def test_public_page_renders_for_anonymous_visitor(self):
+        library = Library.objects.create(owner=self.user, name="Metal", is_public=True)
+        self.client.logout()
+        response = self.client.get(reverse("music_vault:public-library", args=["drakk", library.slug]))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "react-app/public.js")
+
+    def test_public_page_renders_even_for_a_missing_library(self):
+        """The shell always renders — the read-only bundle fetches the
+        public API itself and shows a not-found state client-side, the
+        same way the rest of the app surfaces API errors."""
+        self.client.logout()
+        response = self.client.get(reverse("music_vault:public-library", args=["nobody", "ghost"]))
+        self.assertEqual(response.status_code, 200)
 
 
 class AlbumTests(ApiTestCase):

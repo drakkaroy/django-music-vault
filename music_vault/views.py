@@ -54,6 +54,20 @@ def vault_react(request):
     })
 
 
+def public_library(request, username, library_slug):
+    """Shell page for a shared library at /<username>/<library-slug>/ — see
+    docs/backend.md#public-library-sharing. No auth, no CSRF cookie (the
+    page never makes a state-changing request). Renders unconditionally
+    (even for a missing/private library) and lets the read-only React
+    bundle fetch PublicLibraryView and show a "not found" state itself,
+    the same way the rest of the app surfaces API errors — rather than a
+    bare Django 404 page."""
+    return render(request, "music_vault/vinylvault_public.html", {
+        "username": username,
+        "library_slug": library_slug,
+    })
+
+
 class ApiView(View):
     """Base for JSON endpoints: requires auth, parses JSON bodies."""
 
@@ -91,7 +105,10 @@ def _download_cover(album):
 class StateView(ApiView):
     def get(self, request):
         libraries = Library.objects.filter(owner=request.user).prefetch_related("albums")
-        return JsonResponse({"libraries": [library_to_dict(l) for l in libraries]})
+        return JsonResponse({
+            "username": request.user.username,
+            "libraries": [library_to_dict(l) for l in libraries],
+        })
 
 
 class LibraryListView(ApiView):
@@ -210,6 +227,24 @@ class ImportView(ApiView):
 
         libraries = Library.objects.filter(owner=request.user).prefetch_related("albums")
         return JsonResponse({"libraries": [library_to_dict(l) for l in libraries]})
+
+
+class PublicLibraryView(View):
+    """Read-only, unauthenticated: `GET api/public/<username>/<slug>/`. Not
+    an ApiView (which requires a logged-in user) — this is the one endpoint
+    meant to be reachable by anyone with the link. GET-only by design: no
+    write path exists here, so a visitor can browse but never mutate
+    anything through the API. See docs/backend.md#public-library-sharing."""
+
+    def get(self, request, username, library_slug):
+        library = (
+            Library.objects.filter(owner__username=username, slug=library_slug, is_public=True)
+            .prefetch_related("albums")
+            .first()
+        )
+        if library is None:
+            return JsonResponse({"error": "Library not found"}, status=404)
+        return JsonResponse({"library": library_to_dict(library)})
 
 
 class SpotifySearchView(ApiView):

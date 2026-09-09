@@ -7,17 +7,23 @@ import { BackLink, Button, IconButton, LibDot, ViewToggle, type ViewMode } from 
 
 interface LibraryViewProps {
   library: Library
-  onBack: () => void
-  onAddAlbum: () => void
-  onEditLibrary: () => void
-  onDeleteLibrary: () => void
+  /** Public share page: hides the "all libraries" back link and the
+   * add/edit/delete head actions, and doesn't let AlbumGrid render a
+   * favorite toggle. Everything else — filters, sort, view toggle, the
+   * grid itself — is identical, since it's all display, not mutation. */
+  readOnly?: boolean
+  onBack?: () => void
+  onAddAlbum?: () => void
+  onEditLibrary?: () => void
+  onDeleteLibrary?: () => void
   onOpenAlbum: (album: Album) => void
   onPlayAlbum: (album: Album) => void
-  onToggleFavorite: (album: Album) => void
+  onToggleFavorite?: (album: Album) => void
 }
 
 export function LibraryView({
   library,
+  readOnly,
   onBack,
   onAddAlbum,
   onEditLibrary,
@@ -35,7 +41,7 @@ export function LibraryView({
 
   return (
     <div className="view">
-      <BackLink onClick={onBack}>← All libraries</BackLink>
+      {!readOnly && onBack && <BackLink onClick={onBack}>← All libraries</BackLink>}
       <div className="page-head">
         <div>
           <h1>
@@ -44,17 +50,19 @@ export function LibraryView({
           </h1>
           <p className="page-sub">{library.description}</p>
         </div>
-        <div className="head-actions">
-          <Button variant="accent" onClick={onAddAlbum}>
-            ＋ Add album
-          </Button>
-          <IconButton aria-label="Edit library" title="Edit library" onClick={onEditLibrary}>
-            ✎
-          </IconButton>
-          <IconButton aria-label="Delete library" title="Delete library" onClick={onDeleteLibrary}>
-            🗑
-          </IconButton>
-        </div>
+        {!readOnly && (
+          <div className="head-actions">
+            <Button variant="accent" onClick={onAddAlbum}>
+              ＋ Add album
+            </Button>
+            <IconButton aria-label="Edit library" title="Edit library" onClick={onEditLibrary}>
+              ✎
+            </IconButton>
+            <IconButton aria-label="Delete library" title="Delete library" onClick={onDeleteLibrary}>
+              🗑
+            </IconButton>
+          </div>
+        )}
       </div>
       <Toolbar albums={library.albums} filters={filters} onChange={setFilters} />
       <div className="grid-bar">
@@ -67,6 +75,7 @@ export function LibraryView({
         albums={filtered}
         sort={filters.sort}
         viewMode={viewMode}
+        readOnly={readOnly}
         onOpen={onOpenAlbum}
         onPlay={onPlayAlbum}
         onToggleFavorite={onToggleFavorite}

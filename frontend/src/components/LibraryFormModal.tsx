@@ -3,7 +3,7 @@ import { createLibrary, updateLibrary } from '../api/client'
 import { useVault } from '../context/VaultContext'
 import type { Library } from '../types/api'
 import './LibraryFormModal.css'
-import { Button, ColorSwatch, Modal } from './ui'
+import { Button, ColorSwatch, IconButton, Modal } from './ui'
 
 const LIB_COLORS = ['#e0654a', '#4a90e0', '#1ed760', '#b678e8', '#ffcf5c', '#ff5c8a', '#4ad4c9', '#8a93a5']
 
@@ -21,21 +21,38 @@ export function LibraryFormModal({ library, onClose, onCreated }: LibraryFormMod
   const [name, setName] = useState(library?.name ?? '')
   const [description, setDescription] = useState(library?.description ?? '')
   const [color, setColor] = useState(library?.color ?? LIB_COLORS[state.libraries.length % LIB_COLORS.length])
+  const [isPublic, setIsPublic] = useState(library?.isPublic ?? false)
+
+  const shareUrl = (slug: string) => `${location.origin}/${state.username}/${slug}/`
+
+  const copyShareLink = async () => {
+    if (!library) return
+    try {
+      await navigator.clipboard.writeText(shareUrl(library.slug))
+      pushToast('Link copied')
+    } catch {
+      pushToast('Could not copy — select and copy the link manually', '⚠')
+    }
+  }
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     try {
       if (library) {
-        await updateLibrary(library.id, { name, description, color })
+        await updateLibrary(library.id, { name, description, color, isPublic })
         await refreshState()
         pushToast('Library updated')
         onClose()
       } else {
-        const created = await createLibrary({ name, description, color })
+        const created = await createLibrary({ name, description, color, isPublic })
         await refreshState()
         onClose()
         onCreated(created)
-        pushToast(`Library "${name}" created — add your first album!`)
+        pushToast(
+          created.isPublic
+            ? `Library "${name}" created — public at ${shareUrl(created.slug)}`
+            : `Library "${name}" created — add your first album!`,
+        )
       }
     } catch (err) {
       pushToast(err instanceof Error ? err.message : 'Something went wrong', '⚠')
@@ -72,6 +89,21 @@ export function LibraryFormModal({ library, onClose, onCreated }: LibraryFormMod
               <ColorSwatch key={c} color={c} active={c === color} onClick={() => setColor(c)} />
             ))}
           </div>
+        </div>
+        <div className="field">
+          <label className="checkbox-label">
+            <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} />
+            Make this library public
+          </label>
+          <p className="hint">Anyone with the link can browse it read-only — no login, no editing.</p>
+          {isPublic && library && (
+            <div className="share-row">
+              <input readOnly value={shareUrl(library.slug)} onFocus={(e) => e.target.select()} />
+              <IconButton aria-label="Copy share link" title="Copy link" onClick={copyShareLink}>
+                ⧉
+              </IconButton>
+            </div>
+          )}
         </div>
         <div className="modal-actions">
           <Button variant="ghost" onClick={onClose}>

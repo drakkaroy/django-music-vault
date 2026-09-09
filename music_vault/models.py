@@ -3,6 +3,7 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from django.utils.text import slugify
 
 
 class Library(models.Model):
@@ -14,11 +15,34 @@ class Library(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     color = models.CharField(max_length=7, default="#e0654a")
+    # Auto-generated once from `name` at creation (see save()) and then left
+    # alone — a public share link (/<owner.username>/<slug>/, see
+    # PublicLibraryView) must not break just because the library was
+    # renamed. Unique per owner, not globally: two different users can each
+    # have a "metal" library at their own /<username>/metal/.
+    slug = models.SlugField(max_length=220, blank=True)
+    # Opt-in: a library is never publicly reachable until its owner
+    # explicitly toggles this (see docs/backend.md#public-library-sharing).
+    is_public = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["created_at"]
         verbose_name_plural = "libraries"
+        constraints = [
+            models.UniqueConstraint(fields=["owner", "slug"], name="unique_library_slug_per_owner"),
+        ]
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base = slugify(self.name) or "library"
+            slug = base
+            suffix = 2
+            while Library.objects.filter(owner_id=self.owner_id, slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base}-{suffix}"
+                suffix += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return self.name

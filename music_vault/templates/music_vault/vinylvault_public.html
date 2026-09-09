@@ -1,0 +1,18 @@
+{% load static %}<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{{ username }} — Music Vault</title>
+<link rel="stylesheet" href="{% static 'music_vault/react-app/public.css' %}">
+</head>
+<body>
+<div id="root"></div>
+<script>
+  window.MV_BASE = "{% url 'music_vault:vault' %}";
+  window.MV_PUBLIC_USERNAME = "{{ username|escapejs }}";
+  window.MV_PUBLIC_SLUG = "{{ library_slug|escapejs }}";
+</script>
+<script type="module" src="{% static 'music_vault/react-app/public.js' %}"></script>
+</body>
+</html>

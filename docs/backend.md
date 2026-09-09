@@ -24,6 +24,8 @@ Album shape: `{id, title, artist, year, genre, country, label, cover, coverFile,
 - `coverFile` — media URL of a locally downloaded copy, or `""`. The frontend's `coverOf()` prefers this over `cover` when present.
 - `tracks` — `[{trackNumber, title, durationMs, spotifyUri}, ...]`, sorted by `trackNumber`. See [Tracks](#tracks) below — like `tags`, this is a flat `JSONField` list, not a separate model.
 
+Library shape: `{id, name, description, color, slug, isPublic, createdAt, albums[]}`. `slug` and `isPublic` back the public share URL — see [Public library sharing](#public-library-sharing). `api/state/`'s response also carries a top-level `username` (the requesting user's, for building `/​<username>/<slug>/` links client-side) alongside `libraries[]`.
+
 `clean_album_payload`/`clean_library_payload` in `serializers.py` are the single validation point for both the create and update paths (and `ImportView`, which reuses them per-album/per-library during a backup restore).
 
 ## Endpoints
@@ -39,6 +41,7 @@ All under wherever `music_vault.urls` is mounted (`/` in the standalone project)
 | PUT / DELETE | `api/albums/<id>/` | |
 | POST | `api/albums/<id>/favorite/` | toggles |
 | POST | `api/import/` | replaces the user's entire collection, all-or-nothing (`transaction.atomic`) |
+| GET | `api/public/<username>/<slug>/` | **no auth** — read-only, only if the library's `is_public` — see [Public library sharing](#public-library-sharing) |
 | GET | `api/spotify/search/?q=&limit=` | client-credentials, no user auth needed |
 | GET | `api/spotify/albums/<spotify_id>/` | normalized detail |
 | GET | `api/spotify/status/` | `{connected: bool}` |
@@ -48,6 +51,17 @@ All under wherever `music_vault.urls` is mounted (`/` in the standalone project)
 | POST | `api/albums/<id>/play/` | Spotify Connect playback; optional `{trackUri}` jumps to that track within the album's context |
 | GET | `spotify/connect/` | redirect into Spotify's consent screen (not JSON) |
 | GET | `spotify/callback/` | OAuth redirect target (not JSON) |
+
+## Public library sharing
+
+A library's owner can make it reachable by anyone with the link, at `/<owner.username>/<library.slug>/` — a real, page-shell-plus-fetch route registered as the **last** urlpattern in `music_vault/urls.py` (so a username of `api`, `legacy`, or `spotify` can never shadow those routes). Two pieces:
+
+- **`Library.slug`** (`models.py`) — auto-generated once from `name` in `Library.save()` the first time the row is saved (`slugify(name)`, deduplicated per owner with a `-2`/`-3`/... suffix — two different users can each have their own `/​<username>/metal/`, but the same user can't have two). It never changes on a later rename, so a shared link never breaks just because the library got renamed. Because generation lives in `save()` rather than in a view, it applies uniformly whether the row is created through `LibraryListView.post`, `ImportView`, the Django admin, or a test's direct `Library.objects.create(...)` — one place, no endpoint-specific duplication (same reasoning as `clean_album_payload`/`clean_library_payload` being the single validation point for the rest of the model). A `UniqueConstraint(fields=["owner", "slug"])` backs this at the DB level; migration `0006_library_public_sharing` backfills slugs for rows that predate this field before adding the constraint.
+- **`Library.is_public`** (default `False`) — the opt-in switch. `clean_library_payload()` only includes `is_public` in the fields it returns when the caller's payload actually contains an `isPublic` key — a plain rename (`{name, description, color}`, no `isPublic`) must never silently flip a public library back to private. The frontend's library form always sends the field (it's a checkbox with a real value either way), so this only matters for other API clients.
+
+**`PublicLibraryView`** (`api/public/<username>/<slug>/`) is a plain Django `View`, not an `ApiView` — it doesn't require a session, and it's GET-only by construction (no `post`/`put`/`delete` method exists on it, so those 405 automatically). This is deliberate: it's the one endpoint meant to be reachable by anonymous visitors, and it has no write path at all, matching the "reference only, no API mutation" requirement this feature was built for. It 404s unless a `Library` matches `owner__username`, `slug`, **and** `is_public=True` — a private library's slug and a nonexistent one are indistinguishable to a visitor. The response shape is the same `library_to_dict()` used everywhere else (`{"library": {...}}`), so the frontend's existing `Library`/`Album` types and read-only components (`AlbumCard`, `AlbumGrid`, `Toolbar`, `LibraryView`) work unmodified — see [frontend.md#public-library-sharing](frontend.md#public-library-sharing).
+
+`public_library` (the page view, `<username>/<slug>/`) renders unconditionally — even for a missing or private library — rather than 404ing itself; the read-only React bundle calls `PublicLibraryView` on mount and shows its own "not found" state on a 404, the same way the rest of the app surfaces API errors, instead of a bare Django 404 page.
 
 ## Cover downloads (`covers.py`)
 
