@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-music-vault"
-version = "0.1.0"
+version = "0.2.0"
 description = "Reusable Django app for cataloging your music collection — libraries, albums, tags, favorites and Spotify metadata autofill — with the VinylVault frontend included."
 readme = "README.md"
 license = { file = "LICENSE" }
