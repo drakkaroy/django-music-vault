@@ -25,7 +25,7 @@ declare global {
   }
 }
 
-const VAULT_BASE = window.MV_BASE || '/'
+export const VAULT_BASE = window.MV_BASE || '/'
 const API_BASE = `${VAULT_BASE}api/`
 export const SPOTIFY_CONNECT_URL = `${VAULT_BASE}spotify/connect/`
 export const LOGOUT_URL = window.MV_LOGOUT_URL || '/accounts/logout/'

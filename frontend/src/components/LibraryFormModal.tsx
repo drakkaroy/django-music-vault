@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { createLibrary, updateLibrary } from '../api/client'
+import { createLibrary, updateLibrary, VAULT_BASE } from '../api/client'
 import { useVault } from '../context/VaultContext'
 import type { Library } from '../types/api'
 import './LibraryFormModal.css'
@@ -23,7 +23,7 @@ export function LibraryFormModal({ library, onClose, onCreated }: LibraryFormMod
   const [color, setColor] = useState(library?.color ?? LIB_COLORS[state.libraries.length % LIB_COLORS.length])
   const [isPublic, setIsPublic] = useState(library?.isPublic ?? false)
 
-  const shareUrl = (slug: string) => `${location.origin}/${state.username}/${slug}/`
+  const shareUrl = (slug: string) => `${location.origin}${VAULT_BASE}${state.username}/${slug}/`
 
   const copyShareLink = async () => {
     if (!library) return
