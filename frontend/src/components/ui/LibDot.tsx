@@ -11,11 +11,7 @@ export function LibDot({ color, size }: LibDotProps) {
   return (
     <span
       className="lib-dot"
-      style={
-        size
-          ? { background: color, width: size, height: size, display: 'inline-block' }
-          : { background: color }
-      }
+      style={size ? { background: color, width: size, height: size } : { background: color }}
     />
   )
 }
