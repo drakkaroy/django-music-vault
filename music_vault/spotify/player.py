@@ -2,10 +2,14 @@
 
 import re
 import time
+from typing import TYPE_CHECKING
 
 import requests
 
 from . import oauth
+
+if TYPE_CHECKING:
+    from ..models import SpotifyAccount
 
 API_BASE = "https://api.spotify.com/v1"
 _ALBUM_URL_RE = re.compile(r"open\.spotify\.com/album/([A-Za-z0-9]+)")
@@ -28,7 +32,7 @@ def normalize_context_uri(value: str) -> str | None:
 class PlayerClient:
     """Per-user client that refreshes the account's access token as needed."""
 
-    def __init__(self, account):
+    def __init__(self, account: "SpotifyAccount"):
         self.account = account
 
     def _ensure_token(self) -> str:
@@ -45,7 +49,9 @@ class PlayerClient:
         return {"Authorization": f"Bearer {self._ensure_token()}"}
 
     def list_devices(self) -> list[dict]:
-        response = requests.get(f"{API_BASE}/me/player/devices", headers=self._headers(), timeout=10)
+        response = requests.get(
+            f"{API_BASE}/me/player/devices", headers=self._headers(), timeout=10
+        )
         response.raise_for_status()
         return response.json().get("devices", [])
 

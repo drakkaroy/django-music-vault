@@ -1,23 +1,11 @@
-import os
-
-from django.conf import settings
-from django.core.exceptions import ImproperlyConfigured
-
 from .auth import SpotifyAuth
 from .client import SpotifyClient
-
-
-def _get_credentials() -> tuple[str, str]:
-    client_id = getattr(settings, "SPOTIFY_CLIENT_ID", os.environ.get("SPOTIFY_CLIENT_ID", ""))
-    client_secret = getattr(settings, "SPOTIFY_CLIENT_SECRET", os.environ.get("SPOTIFY_CLIENT_SECRET", ""))
-    if not client_id or not client_secret:
-        raise ImproperlyConfigured("SPOTIFY_CLIENT_ID and SPOTIFY_CLIENT_SECRET must be set")
-    return client_id, client_secret
+from .credentials import get_credentials
 
 
 class SpotifyService:
-    def __init__(self):
-        client_id, client_secret = _get_credentials()
+    def __init__(self, client_id: str, client_secret: str):
+        self.credentials = (client_id, client_secret)
         self.client = SpotifyClient(SpotifyAuth(client_id, client_secret))
 
     def search_albums(self, query: str, limit: int = 10) -> list[dict]:
@@ -33,9 +21,14 @@ _service: SpotifyService | None = None
 
 
 def get_service() -> SpotifyService:
+    """Lazy per-process singleton (it caches the client-credentials token). Rebuilt
+    whenever the configured credentials differ from the ones it was built with, so a
+    settings change — ``override_settings`` in tests included — actually takes effect
+    instead of being masked by whichever credentials were seen first."""
     global _service
-    if _service is None:
-        _service = SpotifyService()
+    credentials = get_credentials()
+    if _service is None or _service.credentials != credentials:
+        _service = SpotifyService(*credentials)
     return _service
 
 
