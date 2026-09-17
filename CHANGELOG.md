@@ -65,6 +65,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Initial release: `music_vault` reusable app (libraries, albums, tags, favorites) with the VinylVault frontend, JSON API and a standalone host project.
 
 [Unreleased]: https://github.com/drakkaroy/django-music-vault/compare/v0.2.1...HEAD
-[0.2.1]: https://github.com/drakkaroy/django-music-vault/compare/v0.2.0...v0.2.1
-[0.2.0]: https://github.com/drakkaroy/django-music-vault/compare/v0.1.0...v0.2.0
-[0.1.0]: https://github.com/drakkaroy/django-music-vault/releases/tag/v0.1.0
+<!-- 0.1.0–0.2.1 predate tagging; they link to the commits that bumped pyproject.toml. -->
+[0.2.1]: https://github.com/drakkaroy/django-music-vault/compare/cd4c6c7...a87be40
+[0.2.0]: https://github.com/drakkaroy/django-music-vault/compare/f756d73...cd4c6c7
+[0.1.0]: https://github.com/drakkaroy/django-music-vault/tree/f756d73

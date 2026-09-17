@@ -8,4 +8,5 @@ Deep-reference docs for django-music-vault. Start with the repo [README](../READ
 - [backend.md](backend.md) — views, serializers, the JSON API contract, the two Spotify integrations
 - [frontend.md](frontend.md) — VinylVault template/CSS/JS structure and where it diverges from the original
 - [configuration.md](configuration.md) — every environment variable, Spotify Dashboard setup (redirect URIs)
+- [releasing.md](releasing.md) — publishing a version to PyPI (Trusted Publishing from GitHub Actions, one-time setup, per-release steps)
 - [deployment.md](deployment.md) — what changes for a real deployment (this repo currently only documents dev/standalone use)
