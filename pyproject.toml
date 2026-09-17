@@ -19,12 +19,16 @@ classifiers = [
     "Environment :: Web Environment",
     "Framework :: Django",
     "Framework :: Django :: 4.2",
-    "Framework :: Django :: 5.0",
+    "Framework :: Django :: 5.2",
     "Framework :: Django :: 6.0",
     "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 
@@ -34,9 +38,19 @@ Repository = "https://github.com/drakkaroy/django-music-vault"
 
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.1"]
+dev = ["ruff>=0.6"]
 
 [tool.setuptools.packages.find]
 include = ["music_vault", "music_vault.*"]
 
 [tool.setuptools.package-data]
 music_vault = ["templates/**/*", "static/**/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["frontend", "build", "music_vault/static"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP", "DJ"]
+per-file-ignores = { "music_vault/migrations/*" = ["E501"] }
