@@ -2,12 +2,21 @@
 frontend kept in localStorage. IDs travel as strings and datetimes as
 epoch milliseconds so the original client-side code keeps working."""
 
+from collections.abc import Iterable
+from datetime import datetime
+from typing import Any
 
-def _epoch_ms(dt):
+from .models import Album, Library
+
+# (fields, error): exactly one side is set. Views turn `error` into a 400.
+CleanResult = tuple[dict[str, Any] | None, str | None]
+
+
+def _epoch_ms(dt: datetime) -> int:
     return int(dt.timestamp() * 1000)
 
 
-def _track_to_dict(track):
+def _track_to_dict(track: dict[str, Any]) -> dict[str, Any]:
     return {
         "trackNumber": track.get("track_number"),
         "title": track.get("title", ""),
@@ -16,7 +25,7 @@ def _track_to_dict(track):
     }
 
 
-def album_to_dict(album):
+def album_to_dict(album: Album) -> dict[str, Any]:
     tracks = sorted(album.tracks or [], key=lambda t: t.get("track_number") or 0)
     return {
         "id": str(album.pk),
@@ -37,7 +46,7 @@ def album_to_dict(album):
     }
 
 
-def library_to_dict(library, albums=None):
+def library_to_dict(library: Library, albums: Iterable[Album] | None = None) -> dict[str, Any]:
     if albums is None:
         albums = library.albums.all()
     return {
@@ -55,7 +64,7 @@ def library_to_dict(library, albums=None):
 ALBUM_REQUIRED_FIELDS = ("title", "artist", "year", "genre", "country")
 
 
-def _clean_tracks(tracks):
+def _clean_tracks(tracks: Any) -> tuple[list[dict[str, Any]] | None, str | None]:
     """Validate/normalize the frontend's track rows into storage shape.
 
     Returns (cleaned_list, error_message)."""
@@ -73,16 +82,18 @@ def _clean_tracks(tracks):
             track_number = int(t.get("trackNumber") or i)
         except (TypeError, ValueError):
             track_number = i
-        cleaned.append({
-            "track_number": track_number,
-            "title": str(t["title"]).strip()[:200],
-            "duration_ms": duration_ms,
-            "spotify_uri": str(t.get("spotifyUri", "")).strip()[:255],
-        })
+        cleaned.append(
+            {
+                "track_number": track_number,
+                "title": str(t["title"]).strip()[:200],
+                "duration_ms": duration_ms,
+                "spotify_uri": str(t.get("spotifyUri", "")).strip()[:255],
+            }
+        )
     return cleaned, None
 
 
-def clean_album_payload(data):
+def clean_album_payload(data: dict[str, Any]) -> CleanResult:
     """Validate and normalize an album payload from the frontend.
 
     Returns (fields_dict, error_message). ``fields_dict`` maps model
@@ -123,7 +134,7 @@ def clean_album_payload(data):
     }, None
 
 
-def clean_library_payload(data):
+def clean_library_payload(data: dict[str, Any]) -> CleanResult:
     name = str(data.get("name", "")).strip()
     if not name:
         return None, "Library name is required"
