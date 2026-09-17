@@ -32,8 +32,11 @@ Deep-reference docs live in `docs/` (start at [docs/index.md](docs/index.md)) �
 ```bash
 source .venv/bin/activate
 python manage.py test music_vault      # run the test suite (uses SQLite)
+ruff check . && ruff format --check .  # what CI runs — `ruff format .` before every commit (pip install -e ".[dev]")
 DB_ENGINE=sqlite3 python manage.py runserver   # run without Postgres
 ```
+
+CI (`.github/workflows/ci.yml`) runs the suite on the Django × Python matrix the `pyproject.toml` classifiers claim, plus `makemigrations --check` and ruff — a classifier without a matrix entry is an unverified promise, keep them in sync. Host-facing config problems are surfaced as system checks (`music_vault/checks.py`, `music_vault.W00x`), never as first-request tracebacks — add one there when a new optional setting appears. `CHANGELOG.md` (Keep a Changelog) gets an `[Unreleased]` line with every user-visible change; `TODO.md` tracks review follow-ups.
 
 The local `.env` (gitignored) points at the Collector App's Postgres (`django-postgres` docker container, port 5432) and holds real Spotify credentials — never commit or print it.
 

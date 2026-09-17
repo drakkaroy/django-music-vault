@@ -25,6 +25,17 @@ With no `.env` at all, `migrate` + `runserver` work out of the box on SQLite wit
 
 The cover-download feature ([backend.md](backend.md#cover-downloads-coversPy)) needs `MEDIA_ROOT`/`MEDIA_URL` configured in the host project, and the media directory served (the standalone project does this only when `DEBUG=True`, via `django.conf.urls.static.static()` in `project/urls.py` — a real deployment needs its web server or object storage to serve `MEDIA_ROOT` instead, see [deployment.md](deployment.md)).
 
+## System checks
+
+`manage.py check` (and every `runserver`/`migrate`, which run it) reports package-specific warnings — never errors, since both features are optional:
+
+| Id | Meaning |
+|---|---|
+| `music_vault.W001` | `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` unset — Spotify search/autofill/playback endpoints answer 503 until they are. |
+| `music_vault.W002` | `MEDIA_ROOT` is empty — Django would then write downloaded covers relative to the process working directory. |
+
+Silence one you've knowingly accepted with `SILENCED_SYSTEM_CHECKS = ["music_vault.W001"]`. The checks live in `music_vault/checks.py`, registered from `MusicVaultConfig.ready()`.
+
 ## Spotify Dashboard setup
 
 Both Spotify flows share one app registration at <https://developer.spotify.com/dashboard> — you only need `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` for search/autofill, but **playback (the ▶ Play button) additionally needs a Redirect URI registered**, or connecting an account fails with Spotify's `redirect_uri: Not matching configuration` error.
@@ -48,6 +59,7 @@ DATABASES = {
     "music_db": {...},
 }
 DATABASE_ROUTERS = ["yourproject.routers.MusicVaultRouter"]
+
 
 # yourproject/routers.py
 class MusicVaultRouter:

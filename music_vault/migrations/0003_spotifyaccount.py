@@ -6,23 +6,34 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('music_vault', '0002_album_cover_file'),
+        ("music_vault", "0002_album_cover_file"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
 
     operations = [
         migrations.CreateModel(
-            name='SpotifyAccount',
+            name="SpotifyAccount",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('access_token', models.CharField(max_length=500)),
-                ('refresh_token', models.CharField(max_length=500)),
-                ('expires_at', models.FloatField()),
-                ('scope', models.CharField(blank=True, max_length=255)),
-                ('connected_at', models.DateTimeField(auto_now_add=True)),
-                ('user', models.OneToOneField(on_delete=django.db.models.deletion.CASCADE, related_name='spotify_account', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("access_token", models.CharField(max_length=500)),
+                ("refresh_token", models.CharField(max_length=500)),
+                ("expires_at", models.FloatField()),
+                ("scope", models.CharField(blank=True, max_length=255)),
+                ("connected_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "user",
+                    models.OneToOneField(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="spotify_account",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
     ]

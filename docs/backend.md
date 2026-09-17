@@ -5,7 +5,7 @@
 Every JSON endpoint subclasses `ApiView`, which handles the two things every endpoint needs so individual views don't repeat them:
 
 - **Auth**: `dispatch()` returns a 401 JSON body for anonymous users before the view method runs — no `@login_required` boilerplate per view.
-- **Body parsing**: `self.payload` is populated from the JSON body only when `Content-Type: application/json` and the method is POST/PUT/PATCH; otherwise it's `{}`. This guard exists because Django's test client (and some non-JS clients) sends a non-empty multipart body on a bodyless POST — parsing that as JSON used to raise a false "Invalid JSON body" 400.
+- **Body parsing**: `self.payload` is populated from the JSON body only when `Content-Type: application/json` and the method is POST/PUT/PATCH; otherwise it's `{}`. This guard exists because Django's test client (and some non-JS clients) sends a non-empty multipart body on a bodyless POST — parsing that as JSON used to raise a false "Invalid JSON body" 400. A body that is valid JSON but not an object (`[]`, `"x"`, `1`) is a 400 too — every consumer does `payload.get(...)`, so it must never reach them.
 - **Ownership helpers**: `get_library`/`get_album` filter by the requesting user, so a valid id belonging to someone else 404s instead of 403ing (no confirmation that the id exists at all).
 
 No DRF — plain `JsonResponse` in, `json.loads(request.body)` out. This is a deliberate dependency constraint (see [configuration.md](configuration.md)): the package depends on Django + `requests` only.
@@ -69,7 +69,8 @@ Album create/update accepts an optional `downloadCover: true`. When set, `fetch_
 
 This is a **best-effort, SSRF-guarded** fetch:
 - only `https://i.scdn.co` (Spotify's image CDN) is accepted as a source host — nothing else is ever requested, so this endpoint can't be used to make the server fetch arbitrary URLs;
-- 5 MB cap, content-type allowlist (`image/jpeg|png|webp`);
+- redirects are **not** followed (`allow_redirects=False`) — the host allowlist is checked against the URL we were given, so a redirect elsewhere must not be followed silently;
+- 5 MB cap (enforced while streaming, so an oversized body is dropped early), content-type allowlist (`image/jpeg|png|webp`), and a magic-byte check on the downloaded bytes — the `Content-Type` header only picks the file extension, the bytes must actually look like that format;
 - any failure (disallowed host, network error, oversized, wrong content-type) just leaves `coverFile` empty — the album keeps its remote `cover` URL and the request still succeeds. This is intentional: a flaky/unreachable image host should never block saving an album.
 
 On edit, if the cover URL changes, the stale local file is deleted before a new one is (optionally) fetched. A `post_delete` signal on `Album` removes the file when the album itself is deleted.
@@ -90,7 +91,7 @@ There are **two independent Spotify auth flows** — don't conflate them:
 
 ### 1. Client-credentials (`spotify/auth.py`, `client.py`, `service.py`) — search/autofill
 
-App-level auth, no user login with Spotify. `SpotifyAuth` caches a token in memory; `SpotifyClient` wraps `/search` and `/albums/<id>` with 429 retry/backoff; `service.get_service()` is a lazy singleton that raises `ImproperlyConfigured` (→ 503 in the view) if `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` aren't set. `_normalize_album()` reshapes Spotify's response into the flat dict the frontend's search modal and album-form prefill expect — including a `tracks` list (only present on the full album detail fetch, not on search result items, since Spotify's `/search` doesn't include a tracklist). Note this endpoint's JSON is **not** the frontend's camelCase album contract — it's `snake_case` throughout (`cover_url`, `release_date`, `track_number`, ...), and the album form converts it once when prefilling from an import.
+App-level auth, no user login with Spotify. `SpotifyAuth` caches a token in memory; `SpotifyClient` wraps `/search` and `/albums/<id>` with 429 retry/backoff; `service.get_service()` is a lazy singleton (rebuilt if the configured credentials change, so `override_settings` in tests takes effect) that raises `ImproperlyConfigured` (→ 503 in the view) if `SPOTIFY_CLIENT_ID`/`SPOTIFY_CLIENT_SECRET` aren't set — both flows read them through `spotify/credentials.py`. A 429's `Retry-After` is honored but capped at 30 s so a request thread is never parked for the many-minute values Spotify sometimes sends. `_normalize_album()` reshapes Spotify's response into the flat dict the frontend's search modal and album-form prefill expect — including a `tracks` list (only present on the full album detail fetch, not on search result items, since Spotify's `/search` doesn't include a tracklist). Note this endpoint's JSON is **not** the frontend's camelCase album contract — it's `snake_case` throughout (`cover_url`, `release_date`, `track_number`, ...), and the album form converts it once when prefilling from an import.
 
 This flow can only read public catalog data — it cannot see devices or control playback.
 

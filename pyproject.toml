@@ -1,13 +1,15 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-music-vault"
-version = "0.2.1"
+version = "0.3.0"
 description = "Reusable Django app for cataloging your music collection — libraries, albums, tags, favorites and Spotify metadata autofill — with the VinylVault frontend included."
 readme = "README.md"
-license = { file = "LICENSE" }
+license = "MIT"
+license-files = ["LICENSE"]
+keywords = ["django", "music", "vinyl", "collection", "spotify"]
 authors = [{ name = "drakkaroy" }]
 requires-python = ">=3.10"
 dependencies = [
@@ -19,24 +21,39 @@ classifiers = [
     "Environment :: Web Environment",
     "Framework :: Django",
     "Framework :: Django :: 4.2",
-    "Framework :: Django :: 5.0",
+    "Framework :: Django :: 5.2",
     "Framework :: Django :: 6.0",
     "Intended Audience :: Developers",
     "Intended Audience :: End Users/Desktop",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
 ]
 
 [project.urls]
 Homepage = "https://github.com/drakkaroy/django-music-vault"
 Repository = "https://github.com/drakkaroy/django-music-vault"
+Changelog = "https://github.com/drakkaroy/django-music-vault/blob/main/CHANGELOG.md"
+Issues = "https://github.com/drakkaroy/django-music-vault/issues"
 
 [project.optional-dependencies]
 postgres = ["psycopg[binary]>=3.1"]
+dev = ["ruff>=0.6"]
 
 [tool.setuptools.packages.find]
 include = ["music_vault", "music_vault.*"]
 
 [tool.setuptools.package-data]
 music_vault = ["templates/**/*", "static/**/*"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["frontend", "build", "music_vault/static"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W", "B", "UP", "DJ"]
+per-file-ignores = { "music_vault/migrations/*" = ["E501"] }

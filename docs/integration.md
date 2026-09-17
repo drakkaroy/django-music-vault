@@ -15,7 +15,7 @@ pip install git+https://github.com/drakkaroy/django-music-vault.git
 ```python
 INSTALLED_APPS = [
     ...,
-    "django.contrib.staticfiles",   # required — serves music_vault's bundled CSS/JS
+    "django.contrib.staticfiles",  # required — serves music_vault's bundled CSS/JS
     "music_vault",
 ]
 ```
@@ -29,9 +29,11 @@ from django.urls import include, path
 
 urlpatterns = [
     ...,
-    path("music/", include("music_vault.urls")),   # any prefix — "" works too
+    path("music/", include("music_vault.urls")),  # any prefix — "" works too, but keep it LAST
 ]
 ```
+
+**Put the `include` after your own routes.** The public library share page is served at `<prefix>/<username>/<library-slug>/`, a catch-all that matches *any* two-segment path under the mount point. With `""` as the prefix, a `path("reports/monthly/", ...)` registered *after* the include would be shadowed by it (the visitor gets the share page's "not found" state instead of your view). Routes registered *before* the include always win, so ordering is the only thing to get right.
 
 **The mount prefix matters for Spotify playback**, not just search: the OAuth redirect URI is built as `request.build_absolute_uri(reverse("music_vault:spotify-callback"))`, so mounting at `"music/"` makes the callback `https://yourhost/music/spotify/callback/`, not `.../spotify/callback/`. Register whatever the actual mounted path is in the Spotify Dashboard — see [configuration.md#spotify-dashboard-setup](configuration.md#spotify-dashboard-setup).
 
@@ -47,7 +49,7 @@ urlpatterns = [..., path("accounts/", include("django.contrib.auth.urls"))]
 That's it — `django.contrib.auth.urls`'s `LoginView` looks for `registration/login.html`, and our package's copy is found automatically via `APP_DIRS` (Django checks `TEMPLATES.DIRS` first, then each app's `templates/`, in `INSTALLED_APPS` order). Optionally set:
 
 ```python
-LOGIN_REDIRECT_URL = "music_vault:vault"   # land here right after login
+LOGIN_REDIRECT_URL = "music_vault:vault"  # land here right after login
 ```
 
 **Already have a login flow, or want your own look?** Nothing to do — Django's template loader checks your project's own `TEMPLATES.DIRS` *before* any app's `templates/`, so a `registration/login.html` of your own is picked up automatically and ours is never seen. No setting to flip, no override mechanism to learn — just supply the template and it wins.
@@ -55,7 +57,7 @@ LOGIN_REDIRECT_URL = "music_vault:vault"   # land here right after login
 **Logout, if you're not using `django.contrib.auth.urls`**: both frontends' sidebars log out via `reverse("logout")` by default — the URL name `django.contrib.auth.urls` registers. If your project handles auth some other way (most commonly [django-allauth](https://docs.allauth.org/), whose logout URL is named `account_logout`, not `logout`), that raises `NoReverseMatch` on `music_vault`'s pages even though your own login/logout works fine everywhere else. Set:
 
 ```python
-MUSIC_VAULT_LOGOUT_URL = "/accounts/logout/"   # or reverse_lazy("account_logout"), etc.
+MUSIC_VAULT_LOGOUT_URL = "/accounts/logout/"  # or reverse_lazy("account_logout"), etc.
 ```
 
 and both frontends use that instead — no URL named `logout` required.

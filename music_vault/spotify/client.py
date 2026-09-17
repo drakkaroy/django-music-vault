@@ -2,12 +2,17 @@ import time
 
 import requests
 
+from .auth import SpotifyAuth
+
 BASE_URL = "https://api.spotify.com/v1"
 MAX_RETRIES = 3
+# Spotify has been seen returning Retry-After values of many minutes (even hours) on
+# 429s; honoring that verbatim would park a request thread for the whole duration.
+MAX_RETRY_AFTER_SECONDS = 30
 
 
 class SpotifyClient:
-    def __init__(self, auth):
+    def __init__(self, auth: SpotifyAuth):
         self.auth = auth
 
     def _headers(self) -> dict:
@@ -18,8 +23,8 @@ class SpotifyClient:
         for attempt in range(MAX_RETRIES):
             response = requests.get(url, headers=self._headers(), params=params, timeout=10)
             if response.status_code == 429:
-                retry_after = int(response.headers.get("Retry-After", 2 ** attempt))
-                time.sleep(retry_after)
+                retry_after = int(response.headers.get("Retry-After", 2**attempt))
+                time.sleep(min(retry_after, MAX_RETRY_AFTER_SECONDS))
                 continue
             response.raise_for_status()
             return response.json()

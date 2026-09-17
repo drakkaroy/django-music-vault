@@ -33,19 +33,23 @@ class Library(models.Model):
             models.UniqueConstraint(fields=["owner", "slug"], name="unique_library_slug_per_owner"),
         ]
 
+    def __str__(self):
+        return self.name
+
     def save(self, *args, **kwargs):
         if not self.slug:
             base = slugify(self.name) or "library"
             slug = base
             suffix = 2
-            while Library.objects.filter(owner_id=self.owner_id, slug=slug).exclude(pk=self.pk).exists():
+            while (
+                Library.objects.filter(owner_id=self.owner_id, slug=slug)
+                .exclude(pk=self.pk)
+                .exists()
+            ):
                 slug = f"{base}-{suffix}"
                 suffix += 1
             self.slug = slug
         super().save(*args, **kwargs)
-
-    def __str__(self):
-        return self.name
 
 
 class Album(models.Model):

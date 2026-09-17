@@ -1,4 +1,5 @@
 import json
+import secrets
 import time
 
 import requests
@@ -6,10 +7,9 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core.exceptions import ImproperlyConfigured
 from django.db import transaction
-from django.http import JsonResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
-from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import ensure_csrf_cookie
 
@@ -39,7 +39,7 @@ def _logout_url() -> str:
 
 @login_required
 @ensure_csrf_cookie
-def vault(request):
+def vault(request: HttpRequest) -> HttpResponse:
     """The original vanilla HTML/CSS/JS frontend — kept at /legacy/ for
     reference/rollback now that `vault_react` is the default. See docs/frontend.md."""
     return render(request, "music_vault/vinylvault.html", {"logout_url": _logout_url()})
@@ -47,14 +47,18 @@ def vault(request):
 
 @login_required
 @ensure_csrf_cookie
-def vault_react(request):
+def vault_react(request: HttpRequest) -> HttpResponse:
     """The React/TypeScript rewrite — the default UI. See docs/frontend.md."""
-    return render(request, "music_vault/vinylvault_react.html", {
-        "logout_url": _logout_url(),
-    })
+    return render(
+        request,
+        "music_vault/vinylvault_react.html",
+        {
+            "logout_url": _logout_url(),
+        },
+    )
 
 
-def public_library(request, username, library_slug):
+def public_library(request: HttpRequest, username: str, library_slug: str) -> HttpResponse:
     """Shell page for a shared library at /<username>/<library-slug>/ — see
     docs/backend.md#public-library-sharing. No auth, no CSRF cookie (the
     page never makes a state-changing request). Renders unconditionally
@@ -62,16 +66,22 @@ def public_library(request, username, library_slug):
     bundle fetch PublicLibraryView and show a "not found" state itself,
     the same way the rest of the app surfaces API errors — rather than a
     bare Django 404 page."""
-    return render(request, "music_vault/vinylvault_public.html", {
-        "username": username,
-        "library_slug": library_slug,
-    })
+    return render(
+        request,
+        "music_vault/vinylvault_public.html",
+        {
+            "username": username,
+            "library_slug": library_slug,
+        },
+    )
 
 
 class ApiView(View):
     """Base for JSON endpoints: requires auth, parses JSON bodies."""
 
-    def dispatch(self, request, *args, **kwargs):
+    payload: dict
+
+    def dispatch(self, request: HttpRequest, *args, **kwargs) -> HttpResponse:
         if not request.user.is_authenticated:
             return JsonResponse({"error": "Authentication required"}, status=401)
         self.payload = {}
@@ -84,16 +94,20 @@ class ApiView(View):
                 self.payload = json.loads(request.body)
             except json.JSONDecodeError:
                 return JsonResponse({"error": "Invalid JSON body"}, status=400)
+            # Every payload consumer does `payload.get(...)` — a valid-but-not-an-object
+            # body (`[]`, `"x"`, `1`) must be a 400 here, not an AttributeError 500 there.
+            if not isinstance(self.payload, dict):
+                return JsonResponse({"error": "JSON body must be an object"}, status=400)
         return super().dispatch(request, *args, **kwargs)
 
-    def get_library(self, request, pk):
+    def get_library(self, request: HttpRequest, pk: int) -> Library | None:
         return Library.objects.filter(owner=request.user, pk=pk).first()
 
-    def get_album(self, request, pk):
+    def get_album(self, request: HttpRequest, pk: int) -> Album | None:
         return Album.objects.filter(library__owner=request.user, pk=pk).first()
 
 
-def _download_cover(album):
+def _download_cover(album: Album) -> None:
     """Best effort: fetch the album's remote cover and store a local copy."""
     filename, content = fetch_cover(album.cover_url)
     if content is not None:
@@ -103,16 +117,18 @@ def _download_cover(album):
 
 
 class StateView(ApiView):
-    def get(self, request):
+    def get(self, request: HttpRequest) -> JsonResponse:
         libraries = Library.objects.filter(owner=request.user).prefetch_related("albums")
-        return JsonResponse({
-            "username": request.user.username,
-            "libraries": [library_to_dict(l) for l in libraries],
-        })
+        return JsonResponse(
+            {
+                "username": request.user.username,
+                "libraries": [library_to_dict(lib) for lib in libraries],
+            }
+        )
 
 
 class LibraryListView(ApiView):
-    def post(self, request):
+    def post(self, request: HttpRequest) -> JsonResponse:
         fields, error = clean_library_payload(self.payload)
         if error:
             return JsonResponse({"error": error}, status=400)
@@ -121,7 +137,7 @@ class LibraryListView(ApiView):
 
 
 class LibraryDetailView(ApiView):
-    def put(self, request, pk):
+    def put(self, request: HttpRequest, pk: int) -> JsonResponse:
         library = self.get_library(request, pk)
         if library is None:
             return JsonResponse({"error": "Library not found"}, status=404)
@@ -133,7 +149,7 @@ class LibraryDetailView(ApiView):
         library.save()
         return JsonResponse(library_to_dict(library))
 
-    def delete(self, request, pk):
+    def delete(self, request: HttpRequest, pk: int) -> JsonResponse:
         library = self.get_library(request, pk)
         if library is None:
             return JsonResponse({"error": "Library not found"}, status=404)
@@ -142,7 +158,7 @@ class LibraryDetailView(ApiView):
 
 
 class AlbumListView(ApiView):
-    def post(self, request, pk):
+    def post(self, request: HttpRequest, pk: int) -> JsonResponse:
         library = self.get_library(request, pk)
         if library is None:
             return JsonResponse({"error": "Library not found"}, status=404)
@@ -156,7 +172,7 @@ class AlbumListView(ApiView):
 
 
 class AlbumDetailView(ApiView):
-    def put(self, request, pk):
+    def put(self, request: HttpRequest, pk: int) -> JsonResponse:
         album = self.get_album(request, pk)
         if album is None:
             return JsonResponse({"error": "Album not found"}, status=404)
@@ -174,7 +190,7 @@ class AlbumDetailView(ApiView):
             _download_cover(album)
         return JsonResponse(album_to_dict(album))
 
-    def delete(self, request, pk):
+    def delete(self, request: HttpRequest, pk: int) -> JsonResponse:
         album = self.get_album(request, pk)
         if album is None:
             return JsonResponse({"error": "Album not found"}, status=404)
@@ -183,7 +199,7 @@ class AlbumDetailView(ApiView):
 
 
 class AlbumFavoriteView(ApiView):
-    def post(self, request, pk):
+    def post(self, request: HttpRequest, pk: int) -> JsonResponse:
         album = self.get_album(request, pk)
         if album is None:
             return JsonResponse({"error": "Album not found"}, status=404)
@@ -195,18 +211,28 @@ class AlbumFavoriteView(ApiView):
 class ImportView(ApiView):
     """Replace the user's entire collection with a VinylVault JSON backup."""
 
-    def post(self, request):
+    def post(self, request: HttpRequest) -> JsonResponse:
         libraries = self.payload.get("libraries")
         if not isinstance(libraries, list):
             return JsonResponse({"error": "Backup must contain a 'libraries' list"}, status=400)
 
         cleaned = []
         for lib_data in libraries:
+            if not isinstance(lib_data, dict):
+                return JsonResponse({"error": "Each library must be an object"}, status=400)
             lib_fields, error = clean_library_payload(lib_data)
             if error:
                 return JsonResponse({"error": error}, status=400)
+            albums_data = lib_data.get("albums") or []
+            if not isinstance(albums_data, list) or not all(
+                isinstance(a, dict) for a in albums_data
+            ):
+                return JsonResponse(
+                    {"error": f"Library '{lib_fields['name']}': albums must be a list of objects"},
+                    status=400,
+                )
             albums = []
-            for album_data in lib_data.get("albums", []):
+            for album_data in albums_data:
                 album_fields, error = clean_album_payload(album_data)
                 if error:
                     return JsonResponse(
@@ -226,7 +252,7 @@ class ImportView(ApiView):
                 )
 
         libraries = Library.objects.filter(owner=request.user).prefetch_related("albums")
-        return JsonResponse({"libraries": [library_to_dict(l) for l in libraries]})
+        return JsonResponse({"libraries": [library_to_dict(lib) for lib in libraries]})
 
 
 class PublicLibraryView(View):
@@ -236,7 +262,7 @@ class PublicLibraryView(View):
     write path exists here, so a visitor can browse but never mutate
     anything through the API. See docs/backend.md#public-library-sharing."""
 
-    def get(self, request, username, library_slug):
+    def get(self, request: HttpRequest, username: str, library_slug: str) -> JsonResponse:
         library = (
             Library.objects.filter(owner__username=username, slug=library_slug, is_public=True)
             .prefetch_related("albums")
@@ -248,12 +274,12 @@ class PublicLibraryView(View):
 
 
 class SpotifySearchView(ApiView):
-    def get(self, request):
+    def get(self, request: HttpRequest) -> JsonResponse:
         query = request.GET.get("q", "").strip()
         if not query:
             return JsonResponse({"error": "Query parameter 'q' is required"}, status=400)
         try:
-            limit = min(int(request.GET.get("limit", 10)), 50)
+            limit = max(1, min(int(request.GET.get("limit", 10)), 50))
         except ValueError:
             limit = 10
         try:
@@ -266,7 +292,7 @@ class SpotifySearchView(ApiView):
 
 
 class SpotifyAlbumView(ApiView):
-    def get(self, request, spotify_id):
+    def get(self, request: HttpRequest, spotify_id: str) -> JsonResponse:
         try:
             album = get_service().get_album(spotify_id)
         except ImproperlyConfigured as exc:
@@ -281,8 +307,9 @@ class SpotifyAlbumView(ApiView):
 # whichever of the user's own devices already has Spotify open.
 # ---------------------------------------------------------------------------
 
+
 @login_required
-def spotify_connect(request):
+def spotify_connect(request: HttpRequest) -> HttpResponse:
     """Kick off the Authorization Code flow — a real browser redirect, not
     a fetch, since the user must land on Spotify's own consent screen."""
     state = oauth.new_state()
@@ -295,7 +322,7 @@ def spotify_connect(request):
 
 
 @login_required
-def spotify_callback(request):
+def spotify_callback(request: HttpRequest) -> HttpResponse:
     vault_url = reverse("music_vault:vault")
     if request.GET.get("error"):
         return redirect(f"{vault_url}?spotify=denied")
@@ -303,7 +330,12 @@ def spotify_callback(request):
     state = request.GET.get("state")
     expected_state = request.session.pop("spotify_oauth_state", None)
     code = request.GET.get("code")
-    if not code or not state or state != expected_state:
+    if (
+        not code
+        or not state
+        or not expected_state
+        or not secrets.compare_digest(state, expected_state)
+    ):
         return redirect(f"{vault_url}?spotify=error")
 
     redirect_uri = request.build_absolute_uri(reverse("music_vault:spotify-callback"))
@@ -326,13 +358,13 @@ def spotify_callback(request):
 
 
 class SpotifyStatusView(ApiView):
-    def get(self, request):
+    def get(self, request: HttpRequest) -> JsonResponse:
         connected = SpotifyAccount.objects.filter(user=request.user).exists()
         return JsonResponse({"connected": connected})
 
 
 class SpotifyDisconnectView(ApiView):
-    def post(self, request):
+    def post(self, request: HttpRequest) -> JsonResponse:
         SpotifyAccount.objects.filter(user=request.user).delete()
         return JsonResponse({"connected": False})
 
@@ -341,7 +373,7 @@ class SpotifyNowPlayingView(ApiView):
     """Polled by the sidebar's now-playing card — best effort, never errors
     the UI: any failure to reach Spotify just means nothing to show."""
 
-    def get(self, request):
+    def get(self, request: HttpRequest) -> JsonResponse:
         try:
             account = SpotifyAccount.objects.get(user=request.user)
         except SpotifyAccount.DoesNotExist:
@@ -376,7 +408,7 @@ class SpotifyTopAlbumsView(ApiView):
     reconnect (re-running the OAuth flow simply requests the fuller scope
     and overwrites the stored tokens — no separate disconnect needed)."""
 
-    def get(self, request):
+    def get(self, request: HttpRequest) -> JsonResponse:
         time_range = request.GET.get("range", "medium_term")
         if time_range not in TOP_ALBUMS_RANGES:
             time_range = "medium_term"
@@ -388,7 +420,10 @@ class SpotifyTopAlbumsView(ApiView):
             )
         if "user-top-read" not in account.scope.split():
             return JsonResponse(
-                {"error": "Reconnect your Spotify account to see this", "code": "insufficient_scope"},
+                {
+                    "error": "Reconnect your Spotify account to see this",
+                    "code": "insufficient_scope",
+                },
                 status=409,
             )
         try:
@@ -421,7 +456,7 @@ class SpotifyTopAlbumsView(ApiView):
 
 
 class AlbumPlayView(ApiView):
-    def post(self, request, pk):
+    def post(self, request: HttpRequest, pk: int) -> JsonResponse:
         album = self.get_album(request, pk)
         if album is None:
             return JsonResponse({"error": "Album not found"}, status=404)
