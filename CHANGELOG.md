@@ -7,7 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-17
+
+First release published to PyPI (`pip install django-music-vault`).
+
 ### Added
+- PyPI release workflow (`release.yml`, Trusted Publishing on a `v*` tag) and `docs/releasing.md`.
 - `CHANGELOG.md`, `TODO.md` and a GitHub Actions matrix (Django 4.2/5.2/6.0 × Python 3.10–3.13, plus `makemigrations --check` and ruff).
 - System checks `music_vault.W001` (Spotify credentials unset) and `music_vault.W002` (`MEDIA_ROOT` empty), registered from `MusicVaultConfig.ready()`.
 - ruff configuration (`[tool.ruff]`) and a `dev` extra; the codebase is ruff-formatted.
@@ -16,7 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - `music_vault.__version__` now comes from package metadata instead of a hand-maintained string (it had been stuck at `0.1.0`).
 - Spotify app credentials are read in one place (`spotify/credentials.py`) for both auth flows; `get_service()` rebuilds its singleton when the configured credentials change.
-- Classifiers: `Django :: 5.0` (EOL) replaced by `5.2`; explicit Python 3.10–3.13 classifiers.
+- Classifiers: `Django :: 5.0` (EOL) replaced by `5.2`; explicit Python 3.10–3.13 classifiers. License metadata moved to the PEP 639 form (`license = "MIT"`).
 - Docs: `include("music_vault.urls")` must come after the host's own routes — the public share page pattern matches any two-segment path.
 
 ### Fixed
@@ -64,7 +69,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - Initial release: `music_vault` reusable app (libraries, albums, tags, favorites) with the VinylVault frontend, JSON API and a standalone host project.
 
-[Unreleased]: https://github.com/drakkaroy/django-music-vault/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/drakkaroy/django-music-vault/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/drakkaroy/django-music-vault/compare/a87be40...v0.3.0
 <!-- 0.1.0–0.2.1 predate tagging; they link to the commits that bumped pyproject.toml. -->
 [0.2.1]: https://github.com/drakkaroy/django-music-vault/compare/cd4c6c7...a87be40
 [0.2.0]: https://github.com/drakkaroy/django-music-vault/compare/f756d73...cd4c6c7
