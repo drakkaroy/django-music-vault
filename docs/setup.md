@@ -20,11 +20,15 @@ Open <http://localhost:8000/> and sign in. See [configuration.md](configuration.
 
 See [integration.md](integration.md) for the full step-by-step checklist (install, `INSTALLED_APPS`, urls, auth — the package ships no login view/template, migrate, and the optional Spotify/media/database-isolation steps).
 
-## Tests
+## Tests and lint
 
 ```bash
 python manage.py test music_vault      # runs on SQLite regardless of DB_ENGINE
+pip install -e ".[dev]"                # ruff
+ruff check . && ruff format --check .  # what CI runs; `ruff format .` to fix
 ```
+
+CI (`.github/workflows/ci.yml`) runs the suite on every Django × Python combination the package's classifiers claim (Django 4.2/5.2/6.0 × Python 3.10–3.13, minus the pairs Django itself doesn't support), plus `makemigrations --check` and ruff. A classifier without a green matrix entry is a promise nobody verified — keep the two in sync.
 
 ## Troubleshooting
 
