@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('music_vault', '0001_initial'),
+        ("music_vault", "0001_initial"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='album',
-            name='cover_file',
-            field=models.FileField(blank=True, upload_to='music_vault/covers/'),
+            model_name="album",
+            name="cover_file",
+            field=models.FileField(blank=True, upload_to="music_vault/covers/"),
         ),
     ]

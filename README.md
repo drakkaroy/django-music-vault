@@ -41,7 +41,7 @@ pip install git+https://github.com/drakkaroy/django-music-vault.git
 ```python
 # settings.py
 INSTALLED_APPS = [..., "music_vault"]
-SPOTIFY_CLIENT_ID = "..."       # optional, for search/autofill and playback
+SPOTIFY_CLIENT_ID = "..."  # optional, for search/autofill and playback
 SPOTIFY_CLIENT_SECRET = "..."
 
 # urls.py

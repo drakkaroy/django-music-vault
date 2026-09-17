@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('music_vault', '0003_spotifyaccount'),
+        ("music_vault", "0003_spotifyaccount"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='album',
-            name='tracks',
+            model_name="album",
+            name="tracks",
             field=models.JSONField(blank=True, default=list),
         ),
     ]

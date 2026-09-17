@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -16,40 +15,76 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Library',
+            name="Library",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('name', models.CharField(max_length=200)),
-                ('description', models.TextField(blank=True)),
-                ('color', models.CharField(default='#e0654a', max_length=7)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='music_libraries', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("name", models.CharField(max_length=200)),
+                ("description", models.TextField(blank=True)),
+                ("color", models.CharField(default="#e0654a", max_length=7)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="music_libraries",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'verbose_name_plural': 'libraries',
-                'ordering': ['created_at'],
+                "verbose_name_plural": "libraries",
+                "ordering": ["created_at"],
             },
         ),
         migrations.CreateModel(
-            name='Album',
+            name="Album",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('title', models.CharField(max_length=200)),
-                ('artist', models.CharField(max_length=200)),
-                ('year', models.PositiveSmallIntegerField(validators=[django.core.validators.MinValueValidator(1900), django.core.validators.MaxValueValidator(2100)])),
-                ('genre', models.CharField(max_length=100)),
-                ('country', models.CharField(max_length=100)),
-                ('label', models.CharField(blank=True, max_length=200)),
-                ('cover_url', models.URLField(blank=True, max_length=500)),
-                ('spotify_uri', models.CharField(blank=True, max_length=255)),
-                ('tags', models.JSONField(blank=True, default=list)),
-                ('favorite', models.BooleanField(db_index=True, default=False)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('library', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='albums', to='music_vault.library')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True, primary_key=True, serialize=False, verbose_name="ID"
+                    ),
+                ),
+                ("title", models.CharField(max_length=200)),
+                ("artist", models.CharField(max_length=200)),
+                (
+                    "year",
+                    models.PositiveSmallIntegerField(
+                        validators=[
+                            django.core.validators.MinValueValidator(1900),
+                            django.core.validators.MaxValueValidator(2100),
+                        ]
+                    ),
+                ),
+                ("genre", models.CharField(max_length=100)),
+                ("country", models.CharField(max_length=100)),
+                ("label", models.CharField(blank=True, max_length=200)),
+                ("cover_url", models.URLField(blank=True, max_length=500)),
+                ("spotify_uri", models.CharField(blank=True, max_length=255)),
+                ("tags", models.JSONField(blank=True, default=list)),
+                ("favorite", models.BooleanField(db_index=True, default=False)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                (
+                    "library",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="albums",
+                        to="music_vault.library",
+                    ),
+                ),
             ],
             options={
-                'ordering': ['artist', 'year'],
-                'indexes': [models.Index(fields=['library', 'artist'], name='music_vault_library_438274_idx')],
+                "ordering": ["artist", "year"],
+                "indexes": [
+                    models.Index(
+                        fields=["library", "artist"], name="music_vault_library_438274_idx"
+                    )
+                ],
             },
         ),
     ]

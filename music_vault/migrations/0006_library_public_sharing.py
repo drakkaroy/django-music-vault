@@ -19,7 +19,6 @@ def backfill_slugs(apps, schema_editor):
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
         ("music_vault", "0005_album_rating"),
     ]
@@ -39,6 +38,8 @@ class Migration(migrations.Migration):
         migrations.RunPython(backfill_slugs, migrations.RunPython.noop),
         migrations.AddConstraint(
             model_name="library",
-            constraint=models.UniqueConstraint(fields=["owner", "slug"], name="unique_library_slug_per_owner"),
+            constraint=models.UniqueConstraint(
+                fields=["owner", "slug"], name="unique_library_slug_per_owner"
+            ),
         ),
     ]
