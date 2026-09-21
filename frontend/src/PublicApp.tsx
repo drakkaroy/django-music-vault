@@ -71,6 +71,7 @@ export default function PublicApp() {
       <LibraryView
         library={library}
         readOnly
+        syncQueryString
         onOpenAlbum={(album) => setModal({ type: 'album-detail', album })}
         onPlayAlbum={openAlbumOnSpotify}
       />
