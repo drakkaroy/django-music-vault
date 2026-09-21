@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Public library page: filters and sort are mirrored into the URL query string (`?q=&genre=&country=&decade=&tag=&sort=`), so a filtered view can be shared as a link and reopens with the same filters.
+
 ## [0.3.0] - 2026-09-17
 
 First release published to PyPI (`pip install django-music-vault`).

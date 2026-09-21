@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { filtersFromSearchParams, filtersToSearchParams } from '../lib/filterQueryString'
 import { applyFilters, emptyFilters, sortAlbums, type Filters } from '../lib/filters'
 import type { Album, Library } from '../types/api'
 import { AlbumGrid } from './AlbumGrid'
@@ -12,6 +13,10 @@ interface LibraryViewProps {
    * favorite toggle. Everything else — filters, sort, view toggle, the
    * grid itself — is identical, since it's all display, not mutation. */
   readOnly?: boolean
+  /** Mirrors the filters into the page's query string (replaceState, no
+   * history entries) and restores them on load, so a filtered view can be
+   * shared as a link. Only the public page turns this on. */
+  syncQueryString?: boolean
   onBack?: () => void
   onAddAlbum?: () => void
   onEditLibrary?: () => void
@@ -24,6 +29,7 @@ interface LibraryViewProps {
 export function LibraryView({
   library,
   readOnly,
+  syncQueryString,
   onBack,
   onAddAlbum,
   onEditLibrary,
@@ -35,8 +41,19 @@ export function LibraryView({
   // Per-library filter memory (like the vanilla app's uiState[libId]) isn't
   // ported yet — this resets when you navigate away and back. Small,
   // deliberate simplification for now.
-  const [filters, setFilters] = useState<Filters>(emptyFilters())
+  const [filters, setFilters] = useState<Filters>(() =>
+    syncQueryString
+      ? filtersFromSearchParams(new URLSearchParams(window.location.search), library.albums)
+      : emptyFilters(),
+  )
   const [viewMode, setViewMode] = useState<ViewMode>('detailed')
+
+  useEffect(() => {
+    if (!syncQueryString) return
+    const query = filtersToSearchParams(filters).toString()
+    window.history.replaceState(null, '', `${window.location.pathname}${query ? `?${query}` : ''}`)
+  }, [syncQueryString, filters])
+
   const filtered = sortAlbums(applyFilters(library.albums, filters), filters.sort)
 
   return (
