@@ -13,7 +13,7 @@ Reusable Django app for cataloging your music collection: libraries, albums, unl
 - **JSON REST API** (no extra dependencies, just Django) with session auth; each user only sees their own data.
 - **Spotify search/autofill**: the "Add album" flow searches Spotify (by artist or album), shows a quick preview, prefills the form and downloads the cover art to local storage (client-credentials, no user OAuth needed).
 - **Spotify Connect playback**: each user can link their own Spotify account (OAuth); the ▶ Play button then starts the album on whichever of their devices already has Spotify open.
-- **Public library sharing**: opt a library in and it's browsable read-only by anyone with the link, at `/<your-username>/<library-name>/` — no login, no editing, just filters/sort/tracklists and a link to open each album on Spotify.
+- **Public library sharing**: opt a library in and it's browsable read-only by anyone with the link, at `/<your-username>/<library-name>/` — no login, no editing, just filters/sort/tracklists (the active filters live in the URL, so a filtered view is shareable as a link) and a link to open each album on Spotify.
 - No hardcoded database: uses the host project's `default` connection, or whatever you define with `DATABASE_ROUTERS`.
 
 ## Quickstart (standalone)
