@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import './App.css'
 import {
+  copyAlbum,
   deleteLibrary,
   importBackup,
+  moveAlbum,
   playAlbum,
   SPOTIFY_CONNECT_URL,
   spotifyAlbumDetail,
@@ -14,6 +16,7 @@ import { FavoritesView } from './components/FavoritesView'
 import { HomeView } from './components/HomeView'
 import { LibraryFormModal } from './components/LibraryFormModal'
 import { LibraryView } from './components/LibraryView'
+import { MoveCopyModal } from './components/MoveCopyModal'
 import { PickLibraryModal } from './components/PickLibraryModal'
 import { Sidebar } from './components/Sidebar'
 import { SpotifySearchModal } from './components/SpotifySearchModal'
@@ -39,6 +42,7 @@ type ModalState =
   | { type: 'album-detail'; library: Library; album: Album }
   | { type: 'tracklist'; album: Album }
   | { type: 'pick-library'; spotify: SpotifySearchResult }
+  | { type: 'move-copy'; mode: 'move' | 'copy'; album: Album; fromLibraryId: string }
   | null
 
 function errorMessage(err: unknown): string {
@@ -86,6 +90,29 @@ export default function App() {
       pushToast(
         updated.favorite ? `Added "${album.title}" to favorites` : `Removed "${album.title}" from favorites`,
         updated.favorite ? '♥' : '♡',
+      )
+    } catch (err) {
+      pushToast(errorMessage(err), '⚠')
+    }
+  }
+
+  const handleMoveOrCopy = async (
+    mode: 'move' | 'copy',
+    album: Album,
+    libraryId: string,
+    keepTags: boolean,
+  ) => {
+    const targetName = state.libraries.find((l) => l.id === libraryId)?.name ?? 'library'
+    try {
+      if (mode === 'move') await moveAlbum(album.id, libraryId, keepTags)
+      else await copyAlbum(album.id, libraryId, keepTags)
+      await refreshState()
+      setModal(null)
+      pushToast(
+        mode === 'move'
+          ? `Moved "${album.title}" to "${targetName}"`
+          : `Copied "${album.title}" to "${targetName}"`,
+        mode === 'move' ? '⇄' : '⧉',
       )
     } catch (err) {
       pushToast(errorMessage(err), '⚠')
@@ -255,6 +282,22 @@ export default function App() {
           onOpenTracklist={() => setModal({ type: 'tracklist', album: modal.album })}
           onPlay={() => handlePlayAlbum(modal.album)}
           onToggleFavorite={() => handleToggleFavorite(modal.album)}
+          onMove={() =>
+            setModal({ type: 'move-copy', mode: 'move', album: modal.album, fromLibraryId: modal.library.id })
+          }
+          onCopy={() =>
+            setModal({ type: 'move-copy', mode: 'copy', album: modal.album, fromLibraryId: modal.library.id })
+          }
+        />
+      )}
+      {modal?.type === 'move-copy' && (
+        <MoveCopyModal
+          mode={modal.mode}
+          album={modal.album}
+          libraries={state.libraries}
+          fromLibraryId={modal.fromLibraryId}
+          onClose={() => setModal(null)}
+          onConfirm={(libraryId, keepTags) => handleMoveOrCopy(modal.mode, modal.album, libraryId, keepTags)}
         />
       )}
       {modal?.type === 'tracklist' && (

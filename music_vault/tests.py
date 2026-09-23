@@ -428,6 +428,132 @@ class AlbumTests(ApiTestCase):
         self.assertEqual(response.status_code, 404)
 
 
+class AlbumMoveCopyTests(ApiTestCase):
+    def setUp(self):
+        super().setUp()
+        self.source = Library.objects.create(owner=self.user, name="Rock")
+        self.target = Library.objects.create(owner=self.user, name="Jazz")
+
+    def test_move_reassigns_library_and_drops_tags_by_default(self):
+        album = make_album(self.source, tags=["loud", "90s"])
+        response = self.post_json(
+            reverse("music_vault:api-album-move", args=[album.pk]), {"libraryId": self.target.pk}
+        )
+        self.assertEqual(response.status_code, 200)
+        album.refresh_from_db()
+        self.assertEqual(album.library_id, self.target.pk)
+        self.assertEqual(album.tags, [])
+
+    def test_move_keeps_tags_when_requested(self):
+        album = make_album(self.source, tags=["loud", "90s"])
+        response = self.post_json(
+            reverse("music_vault:api-album-move", args=[album.pk]),
+            {"libraryId": self.target.pk, "keepTags": True},
+        )
+        self.assertEqual(response.status_code, 200)
+        album.refresh_from_db()
+        self.assertEqual(album.library_id, self.target.pk)
+        self.assertEqual(album.tags, ["loud", "90s"])
+
+    def test_move_to_unknown_library_404s(self):
+        album = make_album(self.source)
+        response = self.post_json(
+            reverse("music_vault:api-album-move", args=[album.pk]), {"libraryId": 999999}
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_copy_creates_new_album_and_keeps_original(self):
+        album = make_album(self.source, tags=["loud"], favorite=True, rating=4)
+        response = self.post_json(
+            reverse("music_vault:api-album-copy", args=[album.pk]), {"libraryId": self.target.pk}
+        )
+        self.assertEqual(response.status_code, 201)
+        body = response.json()
+        self.assertNotEqual(body["id"], str(album.pk))
+        self.assertEqual(body["tags"], [])
+        self.assertEqual(body["rating"], 4)
+        self.assertTrue(Album.objects.filter(pk=album.pk, library=self.source).exists())
+        self.assertEqual(self.target.albums.count(), 1)
+
+    def test_copy_keeps_tags_when_requested(self):
+        album = make_album(self.source, tags=["loud"])
+        response = self.post_json(
+            reverse("music_vault:api-album-copy", args=[album.pk]),
+            {"libraryId": self.target.pk, "keepTags": True},
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(response.json()["tags"], ["loud"])
+
+    def test_copy_into_same_library_duplicates_album(self):
+        album = make_album(self.source)
+        response = self.post_json(
+            reverse("music_vault:api-album-copy", args=[album.pk]), {"libraryId": self.source.pk}
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertEqual(self.source.albums.count(), 2)
+
+    def test_cannot_move_or_copy_into_other_users_library(self):
+        album = make_album(self.source)
+        theirs = Library.objects.create(owner=self.other, name="Not yours")
+        for name in ("music_vault:api-album-move", "music_vault:api-album-copy"):
+            response = self.post_json(reverse(name, args=[album.pk]), {"libraryId": theirs.pk})
+            self.assertEqual(response.status_code, 404)
+        album.refresh_from_db()
+        self.assertEqual(album.library_id, self.source.pk)
+        self.assertEqual(theirs.albums.count(), 0)
+
+    def test_cannot_move_or_copy_other_users_album(self):
+        theirs = Library.objects.create(owner=self.other, name="Not yours")
+        their_album = make_album(theirs)
+        for name in ("music_vault:api-album-move", "music_vault:api-album-copy"):
+            response = self.post_json(
+                reverse(name, args=[their_album.pk]), {"libraryId": self.target.pk}
+            )
+            self.assertEqual(response.status_code, 404)
+
+    def test_move_to_current_library_is_a_true_no_op(self):
+        """A move whose target equals the album's current library must not
+        touch tags even with keepTags omitted — otherwise "moving" to the
+        same place you're already in silently wipes them."""
+        album = make_album(self.source, tags=["loud"])
+        response = self.post_json(
+            reverse("music_vault:api-album-move", args=[album.pk]), {"libraryId": self.source.pk}
+        )
+        self.assertEqual(response.status_code, 200)
+        album.refresh_from_db()
+        self.assertEqual(album.library_id, self.source.pk)
+        self.assertEqual(album.tags, ["loud"])
+
+    def test_copy_keeps_favorite_state(self):
+        album = make_album(self.source, favorite=True)
+        response = self.post_json(
+            reverse("music_vault:api-album-copy", args=[album.pk]), {"libraryId": self.target.pk}
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.json()["favorite"])
+
+    def test_move_rejects_boolean_library_id(self):
+        """bool is an int subclass in Python — int(True) == 1 — so a
+        boolean libraryId must be rejected explicitly rather than silently
+        resolving to library 1."""
+        album = make_album(self.source)
+        response = self.post_json(
+            reverse("music_vault:api-album-move", args=[album.pk]), {"libraryId": True}
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_move_rejects_fractional_library_id(self):
+        album = make_album(self.source, tags=["loud"])
+        response = self.post_json(
+            reverse("music_vault:api-album-move", args=[album.pk]),
+            {"libraryId": self.target.pk + 0.9},
+        )
+        self.assertEqual(response.status_code, 404)
+        album.refresh_from_db()
+        self.assertEqual(album.library_id, self.source.pk)
+        self.assertEqual(album.tags, ["loud"])
+
+
 class ImportTests(ApiTestCase):
     def test_import_replaces_collection(self):
         old = Library.objects.create(owner=self.user, name="Old")

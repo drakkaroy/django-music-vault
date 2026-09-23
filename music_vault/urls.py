@@ -21,6 +21,8 @@ urlpatterns = [
         views.AlbumFavoriteView.as_view(),
         name="api-album-favorite",
     ),
+    path("api/albums/<int:pk>/move/", views.AlbumMoveView.as_view(), name="api-album-move"),
+    path("api/albums/<int:pk>/copy/", views.AlbumCopyView.as_view(), name="api-album-copy"),
     path("api/import/", views.ImportView.as_view(), name="api-import"),
     path(
         "api/public/<str:username>/<slug:library_slug>/",

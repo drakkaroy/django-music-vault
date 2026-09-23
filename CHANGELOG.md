@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Public library page: filters and sort are mirrored into the URL query string (`?q=&genre=&country=&decade=&tag=&sort=`), so a filtered view can be shared as a link and reopens with the same filters.
+- Move or copy an album to another library (or duplicate it within the same one) from the album detail view, with an optional "keep tags" checkbox — tags are usually curated per-library, so they're dropped by default. New endpoints `api/albums/<id>/move/` and `api/albums/<id>/copy/`.
 
 ## [0.3.0] - 2026-09-17
 
