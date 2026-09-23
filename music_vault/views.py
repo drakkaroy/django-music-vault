@@ -109,9 +109,17 @@ class ApiView(View):
     def get_target_library(self, request: HttpRequest) -> Library | None:
         """Resolves payload["libraryId"] the same way get_library resolves a
         URL pk — used by the move/copy endpoints, where the target library
-        travels in the body rather than the path."""
+        travels in the body rather than the path. Rejects bool and
+        non-integer float explicitly: Python's int(True) == 1 and
+        int(2.9) == 2 would otherwise silently resolve to the wrong
+        library instead of failing the request."""
+        library_id = self.payload.get("libraryId")
+        if isinstance(library_id, bool):
+            return None
+        if isinstance(library_id, float) and not library_id.is_integer():
+            return None
         try:
-            library_id = int(self.payload.get("libraryId"))
+            library_id = int(library_id)
         except (TypeError, ValueError):
             return None
         return self.get_library(request, library_id)
@@ -230,10 +238,15 @@ class AlbumMoveView(ApiView):
         target = self.get_target_library(request)
         if target is None:
             return JsonResponse({"error": "Target library not found"}, status=404)
-        album.library = target
-        if not self.payload.get("keepTags"):
-            album.tags = []
-        album.save(update_fields=["library", "tags"])
+        # A target equal to the album's current library is a documented
+        # no-op — must return unchanged rather than falling through to the
+        # tag-clearing branch below, which would otherwise wipe tags on a
+        # move that didn't actually move anything.
+        if target.pk != album.library_id:
+            album.library = target
+            if not self.payload.get("keepTags"):
+                album.tags = []
+            album.save(update_fields=["library", "tags"])
         return JsonResponse(album_to_dict(album))
 
 
@@ -264,6 +277,7 @@ class AlbumCopyView(ApiView):
             tags=list(album.tags) if self.payload.get("keepTags") else [],
             tracks=album.tracks,
             rating=album.rating,
+            favorite=album.favorite,
         )
         return JsonResponse(album_to_dict(copy), status=201)
 

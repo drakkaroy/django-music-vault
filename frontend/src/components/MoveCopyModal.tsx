@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { Album, Library } from '../types/api'
 import { IconButton, LibDot, Modal } from './ui'
 
@@ -8,7 +8,7 @@ interface MoveCopyModalProps {
   libraries: Library[]
   fromLibraryId: string
   onClose: () => void
-  onConfirm: (libraryId: string, keepTags: boolean) => void
+  onConfirm: (libraryId: string, keepTags: boolean) => Promise<void>
 }
 
 /** Picker behind AlbumDetailModal's "Move to..."/"Copy to..." buttons.
@@ -24,9 +24,29 @@ export function MoveCopyModal({
   onConfirm,
 }: MoveCopyModalProps) {
   const [keepTags, setKeepTags] = useState(false)
+  const [pending, setPending] = useState(false)
+  // setPending(true) doesn't take effect until the next render, so a second
+  // click fired before then would still see the button enabled — this ref
+  // is checked synchronously to close that gap and stop a double-click from
+  // firing two copy/move requests (and, for copy, creating two albums).
+  const confirming = useRef(false)
   // Moving into the album's current library is a no-op; copying there is a
   // legitimate "duplicate this album" use, so only move filters it out.
   const targets = mode === 'move' ? libraries.filter((l) => l.id !== fromLibraryId) : libraries
+
+  const handlePick = async (libraryId: string) => {
+    if (confirming.current) return
+    confirming.current = true
+    setPending(true)
+    try {
+      await onConfirm(libraryId, keepTags)
+    } finally {
+      // No-op if onConfirm closed the modal on success (unmounting this
+      // component) — only matters for re-enabling the buttons on failure.
+      confirming.current = false
+      setPending(false)
+    }
+  }
 
   return (
     <Modal onClose={onClose}>
@@ -54,7 +74,12 @@ export function MoveCopyModal({
       ) : (
         <div className="pick-library-list">
           {targets.map((l) => (
-            <button key={l.id} className="pick-library-item" onClick={() => onConfirm(l.id, keepTags)}>
+            <button
+              key={l.id}
+              className="pick-library-item"
+              disabled={pending}
+              onClick={() => handlePick(l.id)}
+            >
               <LibDot color={l.color} />
               <span className="pick-library-name">
                 {l.name}

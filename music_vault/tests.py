@@ -511,6 +511,48 @@ class AlbumMoveCopyTests(ApiTestCase):
             )
             self.assertEqual(response.status_code, 404)
 
+    def test_move_to_current_library_is_a_true_no_op(self):
+        """A move whose target equals the album's current library must not
+        touch tags even with keepTags omitted — otherwise "moving" to the
+        same place you're already in silently wipes them."""
+        album = make_album(self.source, tags=["loud"])
+        response = self.post_json(
+            reverse("music_vault:api-album-move", args=[album.pk]), {"libraryId": self.source.pk}
+        )
+        self.assertEqual(response.status_code, 200)
+        album.refresh_from_db()
+        self.assertEqual(album.library_id, self.source.pk)
+        self.assertEqual(album.tags, ["loud"])
+
+    def test_copy_keeps_favorite_state(self):
+        album = make_album(self.source, favorite=True)
+        response = self.post_json(
+            reverse("music_vault:api-album-copy", args=[album.pk]), {"libraryId": self.target.pk}
+        )
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(response.json()["favorite"])
+
+    def test_move_rejects_boolean_library_id(self):
+        """bool is an int subclass in Python — int(True) == 1 — so a
+        boolean libraryId must be rejected explicitly rather than silently
+        resolving to library 1."""
+        album = make_album(self.source)
+        response = self.post_json(
+            reverse("music_vault:api-album-move", args=[album.pk]), {"libraryId": True}
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_move_rejects_fractional_library_id(self):
+        album = make_album(self.source, tags=["loud"])
+        response = self.post_json(
+            reverse("music_vault:api-album-move", args=[album.pk]),
+            {"libraryId": self.target.pk + 0.9},
+        )
+        self.assertEqual(response.status_code, 404)
+        album.refresh_from_db()
+        self.assertEqual(album.library_id, self.source.pk)
+        self.assertEqual(album.tags, ["loud"])
+
 
 class ImportTests(ApiTestCase):
     def test_import_replaces_collection(self):
