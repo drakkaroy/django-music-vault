@@ -1,5 +1,4 @@
 import type { Library } from '../types/api'
-import './PickLibraryModal.css'
 import { IconButton, LibDot, Modal } from './ui'
 
 interface PickLibraryModalProps {

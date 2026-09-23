@@ -106,6 +106,16 @@ class ApiView(View):
     def get_album(self, request: HttpRequest, pk: int) -> Album | None:
         return Album.objects.filter(library__owner=request.user, pk=pk).first()
 
+    def get_target_library(self, request: HttpRequest) -> Library | None:
+        """Resolves payload["libraryId"] the same way get_library resolves a
+        URL pk — used by the move/copy endpoints, where the target library
+        travels in the body rather than the path."""
+        try:
+            library_id = int(self.payload.get("libraryId"))
+        except (TypeError, ValueError):
+            return None
+        return self.get_library(request, library_id)
+
 
 def _download_cover(album: Album) -> None:
     """Best effort: fetch the album's remote cover and store a local copy."""
@@ -206,6 +216,56 @@ class AlbumFavoriteView(ApiView):
         album.favorite = not album.favorite
         album.save(update_fields=["favorite"])
         return JsonResponse(album_to_dict(album))
+
+
+class AlbumMoveView(ApiView):
+    """Reassigns an album to a different library the same user owns. Tags
+    are treated as library-specific (see docs/backend.md#json-contract), so
+    they're dropped on the move unless the caller opts in via keepTags."""
+
+    def post(self, request: HttpRequest, pk: int) -> JsonResponse:
+        album = self.get_album(request, pk)
+        if album is None:
+            return JsonResponse({"error": "Album not found"}, status=404)
+        target = self.get_target_library(request)
+        if target is None:
+            return JsonResponse({"error": "Target library not found"}, status=404)
+        album.library = target
+        if not self.payload.get("keepTags"):
+            album.tags = []
+        album.save(update_fields=["library", "tags"])
+        return JsonResponse(album_to_dict(album))
+
+
+class AlbumCopyView(ApiView):
+    """Duplicates an album into a library the same user owns (which may be
+    the album's current library, for a plain in-place duplicate). The cover
+    isn't re-downloaded onto the copy — cover_url carries over so coverOf()
+    still resolves an image — only cover_file (the local download) is left
+    blank, avoiding a needless file duplication on disk."""
+
+    def post(self, request: HttpRequest, pk: int) -> JsonResponse:
+        album = self.get_album(request, pk)
+        if album is None:
+            return JsonResponse({"error": "Album not found"}, status=404)
+        target = self.get_target_library(request)
+        if target is None:
+            return JsonResponse({"error": "Target library not found"}, status=404)
+        copy = Album.objects.create(
+            library=target,
+            title=album.title,
+            artist=album.artist,
+            year=album.year,
+            genre=album.genre,
+            country=album.country,
+            label=album.label,
+            cover_url=album.cover_url,
+            spotify_uri=album.spotify_uri,
+            tags=list(album.tags) if self.payload.get("keepTags") else [],
+            tracks=album.tracks,
+            rating=album.rating,
+        )
+        return JsonResponse(album_to_dict(copy), status=201)
 
 
 class ImportView(ApiView):

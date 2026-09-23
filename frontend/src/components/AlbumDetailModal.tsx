@@ -13,6 +13,8 @@ interface AlbumDetailModalProps {
   onOpenTracklist: () => void
   onPlay: () => void
   onToggleFavorite: () => void
+  onMove: () => void
+  onCopy: () => void
 }
 
 export function AlbumDetailModal({
@@ -23,6 +25,8 @@ export function AlbumDetailModal({
   onOpenTracklist,
   onPlay,
   onToggleFavorite,
+  onMove,
+  onCopy,
 }: AlbumDetailModalProps) {
   const { refreshState, pushToast } = useVault()
 
@@ -122,6 +126,24 @@ export function AlbumDetailModal({
               }}
             >
               ✎ Edit
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                onClose()
+                onMove()
+              }}
+            >
+              ⇄ Move to...
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => {
+                onClose()
+                onCopy()
+              }}
+            >
+              ⧉ Copy to...
             </Button>
             <Button variant="danger" onClick={handleDelete}>
               Delete

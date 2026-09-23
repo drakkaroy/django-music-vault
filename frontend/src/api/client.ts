@@ -85,6 +85,10 @@ export const createAlbum = (libraryId: string, payload: AlbumPayload) =>
 export const updateAlbum = (id: string, payload: AlbumPayload) => api<Album>(`albums/${id}/`, 'PUT', payload)
 export const deleteAlbum = (id: string) => api<null>(`albums/${id}/`, 'DELETE')
 export const toggleFavorite = (id: string) => api<Album>(`albums/${id}/favorite/`, 'POST')
+export const moveAlbum = (id: string, libraryId: string, keepTags: boolean) =>
+  api<Album>(`albums/${id}/move/`, 'POST', { libraryId, keepTags })
+export const copyAlbum = (id: string, libraryId: string, keepTags: boolean) =>
+  api<Album>(`albums/${id}/copy/`, 'POST', { libraryId, keepTags })
 export const playAlbum = (id: string, trackUri?: string) =>
   api<{ playing: true }>(`albums/${id}/play/`, 'POST', trackUri ? { trackUri } : undefined)
 

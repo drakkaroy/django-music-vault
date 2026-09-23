@@ -40,6 +40,8 @@ All under wherever `music_vault.urls` is mounted (`/` in the standalone project)
 | POST | `api/libraries/<id>/albums/` | |
 | PUT / DELETE | `api/albums/<id>/` | |
 | POST | `api/albums/<id>/favorite/` | toggles |
+| POST | `api/albums/<id>/move/` | `{libraryId, keepTags}` — reassigns the album to another library the same user owns |
+| POST | `api/albums/<id>/copy/` | `{libraryId, keepTags}` — duplicates the album into another library (or the same one) the same user owns; returns 201 |
 | POST | `api/import/` | replaces the user's entire collection, all-or-nothing (`transaction.atomic`) |
 | GET | `api/public/<username>/<slug>/` | **no auth** — read-only, only if the library's `is_public` — see [Public library sharing](#public-library-sharing) |
 | GET | `api/spotify/search/?q=&limit=` | client-credentials, no user auth needed |
@@ -84,6 +86,14 @@ Two ways tracks get populated:
 - **Entered manually**: the album form's track-row editor (`script.js`) — see [frontend.md](frontend.md).
 
 Playing a single track (`api/albums/<id>/play/` with `{trackUri}`) doesn't need a track's own id — the frontend already has the `spotifyUri` from the loaded album, and `PlayerClient.play()` takes it directly as an `offset` inside the album's context (see below). The view only accepts a `trackUri` that starts with `spotify:track:` — anything else is silently ignored (falls back to playing the album from the top) rather than erroring, since a malformed value here is a client bug, not something worth failing the whole play request over.
+
+## Moving and copying albums between libraries
+
+`AlbumMoveView`/`AlbumCopyView` (`api/albums/<id>/move/` and `.../copy/`) both take `{libraryId, keepTags}`, resolved through `ApiView.get_target_library()` — the same ownership-scoped lookup as `get_library`/`get_album`, just reading the target from the body instead of a URL `pk`, so an id for another user's library 404s exactly like an id for another user's album already does.
+
+`keepTags` defaults to dropping tags (`false`/omitted clears them) rather than always carrying them: tags are frequently curated per-library (see [architecture.md](architecture.md#data-model)), so a tag meaningful in a "90s Grunge" library is often noise in a "Jazz" one. The caller decides per move/copy — see [frontend.md#react-rewrite](frontend.md#react-rewrite) for the UI.
+
+Move reassigns `Album.library` in place (the same row, same id). Copy creates a new `Album` row and leaves the original untouched; it does **not** duplicate `cover_file` (the locally-downloaded cover) onto the copy — only `cover_url` carries over, so the copy still shows a cover via `coverOf()`'s remote-URL fallback without a redundant file on disk. Both endpoints accept a target library equal to the album's current one: for move that's a harmless no-op, for copy that's the supported way to duplicate an album within the same library.
 
 ## Spotify integrations
 
